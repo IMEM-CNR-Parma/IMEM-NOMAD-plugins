@@ -1,0 +1,1 @@
+recursive-include src/movpe nomad_plugin.yaml
