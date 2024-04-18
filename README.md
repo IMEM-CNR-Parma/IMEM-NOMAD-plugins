@@ -25,7 +25,6 @@ IMEM-NOMAD-plugins/
 - `src/`: contains the source code of the plugin.
 - `tests/`: contains the tests and template file to use with the plugin.
 
-
 **Please refer to the README.md file in each subdirectory for more information about each plugin.**
 
 ## Installation

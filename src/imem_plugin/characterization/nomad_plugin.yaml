@@ -1,0 +1,4 @@
+plugin_type: schema
+name: characterization techniques for IMEM
+description: |
+  Some class to record basic information about the characterization techniques used in IMEM

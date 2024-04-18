@@ -53,11 +53,11 @@ from nomad_material_processing.vapor_deposition.cvd import (
     Rotation,
 )
 
-from ikz_plugin.movpe import (
-    ExperimentMovpeIKZ,
-    GrowthStepMovpe2IKZ,
-    GrowthMovpeIKZ,
-    GrowthMovpeIKZReference,
+from imem_plugin.movpe import (
+    ExperimentMovpeIMEM,
+    GrowthStepMovpe2IMEM,
+    GrowthMovpeIMEM,
+    GrowthMovpeIMEMReference,
     ThinFilmMovpe,
     ThinFilmStackMovpe,
     ThinFilmStackMovpeReference,
@@ -69,7 +69,7 @@ from ikz_plugin.movpe import (
     LayTecTemperature,
 )
 
-from ikz_plugin.utils import create_archive
+from imem_plugin.utils import create_archive
 
 from ..utils import (
     fetch_substrate,
@@ -87,7 +87,7 @@ class RawFileGrowthRun(EntryData):
         ),
     )
     growth_runs = Quantity(
-        type=ExperimentMovpeIKZ,
+        type=ExperimentMovpeIMEM,
         # a_eln=ELNAnnotation(
         #     component="ReferenceEditQuantity",
         # ),
@@ -95,18 +95,18 @@ class RawFileGrowthRun(EntryData):
     )
 
 
-class ParserMovpe2IKZ(MatchingParser):
+class ParserMovpeIMEM(MatchingParser):
     def __init__(self):
         super().__init__(
-            name='MOVPE 2 IKZ',
-            code_name='MOVPE 2 IKZ',
+            name='MOVPE 2 IMEM',
+            code_name='MOVPE 2 IMEM',
             code_homepage='https://github.com/FAIRmat-NFDI/AreaA-data_modeling_and_schemas',
             supported_compressions=['gz', 'bz2', 'xz'],
         )
 
     def parse(self, mainfile: str, archive: EntryArchive, logger) -> None:
         """
-        Parses the MOVPE 2 IKZ raw file and creates the corresponding archives.
+        Parses the MOVPE 2 IMEM raw file and creates the corresponding archives.
         """
 
         filetype = 'yaml'
@@ -122,9 +122,9 @@ class ParserMovpe2IKZ(MatchingParser):
         )
 
         # initializing experiments dict
-        growth_processes: Dict[str, GrowthMovpeIKZ] = {}
+        growth_processes: Dict[str, GrowthMovpeIMEM] = {}
         # initializing steps dict
-        process_steps_lists: Dict[str, Dict[str, GrowthStepMovpe2IKZ]] = {}
+        process_steps_lists: Dict[str, Dict[str, GrowthStepMovpe2IMEM]] = {}
         # initializing samples dict
         samples_lists: Dict[str, Dict[str, List]] = {}
 
@@ -259,7 +259,7 @@ class ParserMovpe2IKZ(MatchingParser):
                 process_steps_lists[recipe_id] = {}
             if step_id not in process_steps_lists[recipe_id]:
                 process_steps_lists[recipe_id][step_id] = []
-            process_steps_lists[recipe_id][step_id] = GrowthStepMovpe2IKZ(
+            process_steps_lists[recipe_id][step_id] = GrowthStepMovpe2IMEM(
                 name=str(
                     growth_run_file['Step name'][index]
                     if 'Step name' in growth_run_file.columns
@@ -351,7 +351,7 @@ class ParserMovpe2IKZ(MatchingParser):
 
             # creating growth process objects
             if recipe_id not in growth_processes:
-                growth_processes[recipe_id] = GrowthMovpeIKZ(
+                growth_processes[recipe_id] = GrowthMovpeIMEM(
                     name='Growth MOVPE 2',
                     recipe_id=recipe_id,
                     lab_id=sample_id,
@@ -376,11 +376,11 @@ class ParserMovpe2IKZ(MatchingParser):
                     growth_processes[recipe_id].steps.append(process_list)
             else:
                 logger.error(
-                    f"The GrowthMovpeIKZ object with lab_id '{recipe_id}' was not found."
+                    f"The GrowthMovpeIMEM object with lab_id '{recipe_id}' was not found."
                 )
         # creating growth process archives
         for recipe_id, growth_process_object in growth_processes.items():
-            growth_process_filename = f'{recipe_id}.GrowthMovpeIKZ.archive.{filetype}'
+            growth_process_filename = f'{recipe_id}.GrowthMovpeIMEM.archive.{filetype}'
             # Activity.normalize(growth_process_object, archive, logger)
             growth_process_archive = EntryArchive(
                 data=growth_process_object,
@@ -398,16 +398,16 @@ class ParserMovpe2IKZ(MatchingParser):
 
         experiment_reference = []
 
-        sleep(2)  # to give GrowthProcessIKZ the time to be indexed
+        sleep(2)  # to give GrowthProcessIMEM the time to be indexed
 
         for recipe_id in recipe_ids:
-            experiment_filename = f'{recipe_id}.ExperimentMovpeIKZ.archive.{filetype}'
-            growth_process_filename = f'{recipe_id}.GrowthMovpeIKZ.archive.{filetype}'
-            experiment_data = ExperimentMovpeIKZ(
+            experiment_filename = f'{recipe_id}.ExperimentMovpeIMEM.archive.{filetype}'
+            growth_process_filename = f'{recipe_id}.GrowthMovpeIMEM.archive.{filetype}'
+            experiment_data = ExperimentMovpeIMEM(
                 name=f'{recipe_id} experiment',
                 method='MOVPE 2 experiment',
                 lab_id=recipe_id,
-                growth_run=GrowthMovpeIKZReference(
+                growth_run=GrowthMovpeIMEMReference(
                     reference=f'../uploads/{archive.m_context.upload_id}/archive/{hash(archive.m_context.upload_id, growth_process_filename)}#data',
                 ),
             )
