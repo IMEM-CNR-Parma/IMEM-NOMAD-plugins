@@ -17,11 +17,59 @@
 #
 
 import re
+from time import sleep, perf_counter
+import pandas as pd
+from typing import Dict, List
 import yaml
 import json
 import math
-import pandas as pd
-from typing import List
+
+from nomad.datamodel.context import ClientContext, ServerContext
+
+from nomad.datamodel import EntryArchive
+from nomad.metainfo import MSection, Quantity, Section
+from nomad.parsing import MatchingParser
+from nomad.datamodel.metainfo.annotations import (
+    ELNAnnotation,
+)
+from nomad.app.v1.models.models import User
+from nomad.datamodel.data import (
+    EntryData,
+)
+
+from nomad.units import ureg
+
+from nomad.datamodel.metainfo.basesections import (
+    SystemComponent,
+    CompositeSystemReference,
+    PureSubstanceComponent,
+    PureSubstanceSection,
+)
+
+from ikz_plugin import IKZMOVPE2Category
+from nomad.search import search
+
+# from nomad_material_processing.utils import create_archive as create_archive_ref
+from nomad_material_processing import (
+    SubstrateReference,
+)
+from nomad_material_processing.vapor_deposition import (
+    MolarFlowRate,
+    Temperature,
+    Pressure,
+    VolumetricFlowRate,
+)
+from nomad_material_processing.vapor_deposition.cvd import (
+    PartialVaporPressure,
+    BubblerEvaporator,
+    GasLine,
+)
+
+from ikz_plugin.movpe import (
+    BubblerSourceIKZ,
+    GasSourceIKZ,
+)
+from nomad.datamodel.datamodel import EntryArchive, EntryMetadata
 
 
 def get_reference(upload_id, entry_id):
@@ -107,6 +155,38 @@ def create_archive(
         context.upload.process_updated_raw_file(filename, allow_modify=True)
 
     return get_hash_ref(context.upload_id, filename)
+
+    # !! useful to fetch the upload_id from another upload.
+    # experiment_context = ServerContext(
+    #         get_upload_with_read_access(
+    #             matches["upload_id"][0],
+    #             User(
+    #                 is_admin=True,
+    #                 user_id=current_parse_archive.metadata.main_author.user_id,
+    #             ),
+    #             include_others=True,
+    #         )
+    #     )  # Upload(upload_id=matches["upload_id"][0]))
+
+
+# def create_archive(
+#     entry_dict, context, file_name, file_type, logger, *, bypass_check: bool = False
+# ):
+#     import yaml
+#     import json
+
+#     if not context.raw_path_exists(file_name) or bypass_check:
+#         with context.raw_file(file_name, "w") as outfile:
+#             if file_type == "json":
+#                 json.dump(entry_dict, outfile)
+#             elif file_type == "yaml":
+#                 yaml.dump(entry_dict, outfile)
+#         context.upload.process_updated_raw_file(file_name, allow_modify=True)
+#     else:
+#         logger.error(
+#             f"{file_name} archive file already exists."
+#             f"If you intend to reprocess the older archive file, remove the existing one and run reprocessing again."
+#         )
 
 
 def df_value(dataframe, column_header, index=None):
@@ -294,3 +374,232 @@ def clean_dataframe_headers(dataframe: pd.DataFrame) -> pd.DataFrame:
     dataframe = dataframe.reset_index(drop=True)
 
     return dataframe
+
+
+
+def fetch_substrate(archive, sample_id, substrate_id, logger):
+    substrate_reference_str = None
+    search_result = search(
+        owner='all',
+        query={
+            'results.eln.sections:any': ['SubstrateMovpe', 'Substrate'],
+            'results.eln.lab_ids:any': [substrate_id],
+        },
+        user_id=archive.metadata.main_author.user_id,
+    )
+    if not search_result.data:
+        logger.warn(
+            f'Substrate entry [{substrate_id}] was not found, upload and reprocess to reference it in ThinFilmStack entry [{sample_id}]'
+        )
+        return None
+    if len(search_result.data) > 1:
+        logger.warn(
+            f'Found {search_result.pagination.total} entries with lab_id: '
+            f'"{substrate_id}". Will use the first one found.'
+        )
+        return None
+    if len(search_result.data) >= 1:
+        upload_id = search_result.data[0]['upload_id']
+        from nomad.files import UploadFiles
+        from nomad.app.v1.routers.uploads import get_upload_with_read_access
+
+        upload_files = UploadFiles.get(upload_id)
+
+        substrate_context = ServerContext(
+            get_upload_with_read_access(
+                upload_id,
+                User(
+                    is_admin=True,
+                    user_id=archive.metadata.main_author.user_id,
+                ),
+                include_others=True,
+            )
+        )
+
+        if upload_files.raw_path_is_file(substrate_context.raw_path()):
+            substrate_reference_str = f"../uploads/{search_result.data[0]['upload_id']}/archive/{search_result.data[0]['entry_id']}#data"
+            return substrate_reference_str
+        else:
+            logger.warn(
+                f"The path '../uploads/{search_result.data[0]['upload_id']}/archive/{search_result.data[0]['entry_id']}#data' is not a file, upload and reprocess to reference it in ThinFilmStack entry [{sample_id}]"
+            )
+            return None
+
+
+def populate_sources(line_number, growth_run_file: pd.DataFrame):
+    """
+    Populate the Bubbler object from the growth run file
+    """
+    sources = []
+    bubbler_quantities = [
+        'Bubbler Temp',
+        'Bubbler Pressure',
+        'Bubbler Partial Pressure',
+        'Bubbler Dilution',
+        'Source',
+        'Inject',
+        'Bubbler MFC',
+        'Bubbler Molar Flux',
+        'Bubbler Material',
+    ]
+    i = 0
+    while True:
+        if all(
+            f"{key}{'' if i == 0 else '.' + str(i)}" in growth_run_file.columns
+            for key in bubbler_quantities
+        ):
+            sources.append(
+                BubblerSourceIKZ(
+                    name=growth_run_file.get(
+                        f"Bubbler Material{'' if i == 0 else '.' + str(i)}", ''
+                    )[line_number],
+                    material=[
+                        PureSubstanceComponent(
+                            substance_name=growth_run_file.get(
+                                f"Bubbler Material{'' if i == 0 else '.' + str(i)}", ''
+                            )[line_number],
+                            pure_substance=PureSubstanceSection(
+                                name=growth_run_file.get(
+                                    f"Bubbler Material{'' if i == 0 else '.' + str(i)}",
+                                    '',
+                                )[line_number]
+                            ),
+                        ),
+                    ],
+                    vapor_source=BubblerEvaporator(
+                        temperature=Temperature(
+                            set_value=pd.Series(
+                                [
+                                    growth_run_file.get(
+                                        f"Bubbler Temp{'' if i == 0 else '.' + str(i)}",
+                                        0,
+                                    )[line_number]
+                                ]
+                            )
+                            * ureg('celsius').to('kelvin').magnitude,
+                        ),
+                        pressure=Pressure(
+                            set_value=pd.Series(
+                                [
+                                    growth_run_file.get(
+                                        f"Bubbler Pressure{'' if i == 0 else '.' + str(i)}",
+                                        0,
+                                    )[line_number]
+                                ]
+                            )
+                            * ureg('mbar').to('pascal').magnitude,
+                        ),
+                        precursor_partial_pressure=PartialVaporPressure(
+                            set_value=pd.Series(
+                                [
+                                    growth_run_file.get(
+                                        f"Bubbler Partial Pressure{'' if i == 0 else '.' + str(i)}",
+                                        0,
+                                    )[line_number]
+                                ]
+                            ),
+                        ),
+                        total_flow_rate=VolumetricFlowRate(
+                            set_value=pd.Series(
+                                [
+                                    growth_run_file.get(
+                                        f"Bubbler MFC{'' if i == 0 else '.' + str(i)}",
+                                        0,
+                                    )[line_number]
+                                ]
+                            )
+                            * ureg('cm **3 / minute')
+                            .to('meter ** 3 / second')
+                            .magnitude,
+                        ),
+                        dilution=growth_run_file.get(
+                            f"Bubbler Dilution{'' if i == 0 else '.' + str(i)}", 0
+                        )[line_number],
+                        source=growth_run_file.get(
+                            f"Source{'' if i == 0 else '.' + str(i)}", 0
+                        )[line_number],
+                        inject=growth_run_file.get(
+                            f"Inject{'' if i == 0 else '.' + str(i)}", 0
+                        )[line_number],
+                    ),
+                    vapor_molar_flow_rate=MolarFlowRate(
+                        set_value=pd.Series(
+                            [
+                                growth_run_file.get(
+                                    f"Bubbler Molar Flux{'' if i == 0 else '.' + str(i)}",
+                                    0,
+                                )[line_number]
+                            ]
+                        )
+                        * ureg('mol / minute').to('mol / second').magnitude,
+                    ),
+                ),
+            )
+
+            i += 1
+        else:
+            break
+    return sources
+
+
+def populate_gas_source(line_number, growth_run_file: pd.DataFrame):
+    """
+    Populate the GasSource object from the growth run file
+    """
+    gas_sources = []
+    gas_source_quantities = [
+        'Gas Material',
+        'Gas MFC',
+        'Gas Molar Flux',
+    ]
+    i = 0
+    while True:
+        if all(
+            f"{key}{'' if i == 0 else '.' + str(i)}" in growth_run_file.columns
+            for key in gas_source_quantities
+        ):
+            gas_sources.append(
+                GasSourceIKZ(
+                    name=growth_run_file.get(
+                        f"Gas Material{'' if i == 0 else '.' + str(i)}", ''
+                    )[line_number],
+                    material=[
+                        PureSubstanceComponent(
+                            substance_name=growth_run_file.get(
+                                f"Gas Material{'' if i == 0 else '.' + str(i)}", ''
+                            )[line_number],
+                            pure_substance=PureSubstanceSection(
+                                name=growth_run_file.get(
+                                    f"Gas Material{'' if i == 0 else '.' + str(i)}", ''
+                                )[line_number]
+                            ),
+                        ),
+                    ],
+                    vapor_source=GasLine(
+                        total_flow_rate=VolumetricFlowRate(
+                            set_value=pd.Series(
+                                [
+                                    growth_run_file.get(
+                                        f"Gas MFC{'' if i == 0 else '.' + str(i)}", 0
+                                    )[line_number]
+                                ]
+                            ),
+                        ),
+                    ),
+                    vapor_molar_flow_rate=MolarFlowRate(
+                        set_value=pd.Series(
+                            [
+                                growth_run_file.get(
+                                    f"Gas Molar Flux{'' if i == 0 else '.' + str(i)}",
+                                    0,
+                                )[line_number]
+                            ]
+                        )
+                        * ureg('mol / minute').to('mol / second').magnitude,
+                    ),
+                )
+            )
+            i += 1
+        else:
+            break
+    return gas_sources
