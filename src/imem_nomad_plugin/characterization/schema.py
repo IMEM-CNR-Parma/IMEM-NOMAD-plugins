@@ -3,16 +3,20 @@ from nomad.datamodel.metainfo.basesections import (
     Measurement,
     MeasurementResult,
 )
-from nomad.metainfo import Package, Quantity, SubSection, MEnum, Datetime, Section
+from nomad.metainfo import SchemaPackage, Quantity, SubSection, MEnum, Datetime, Section
 from nomad.datamodel.data import EntryData
+from nomad.config import config
 
-from imem_plugin import (
+from imem_nomad_plugin.general.schema import (
     IMEMCategory,
     SubstratePreparationStep,
 )
 
-m_package = Package(name="characterization_imem")
+configuration = config.get_plugin_entry_point(
+    'imem_nomad_plugin.characterization:characterization_schema'
+)
 
+m_package = SchemaPackage()
 
 class AFMresults(MeasurementResult):
     """

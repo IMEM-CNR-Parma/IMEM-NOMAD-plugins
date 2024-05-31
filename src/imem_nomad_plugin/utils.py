@@ -24,40 +24,22 @@ import yaml
 import json
 import math
 
-
+from nomad.datamodel.context import ClientContext
+from nomad.datamodel import EntryArchive
+from nomad.metainfo import MSection, Quantity, Section
+from nomad.parsing import MatchingParser
+from nomad.datamodel.metainfo.annotations import ELNAnnotation
+from nomad.datamodel.data import EntryData
 from nomad.units import ureg
+from nomad.datamodel.metainfo.basesections import SystemComponent, CompositeSystemReference, ElementalComposition, PureSubstanceComponent, PureSubstanceSection
 
-from nomad.datamodel.metainfo.basesections import (
-    SystemComponent,
-    CompositeSystemReference,
-    PureSubstanceComponent,
-    PureSubstanceSection,
-)
+from nomad_material_processing import Dopant, SubstrateReference
+from nomad_material_processing.vapor_deposition import MolarFlowRate, Temperature, Pressure, VolumetricFlowRate
+from nomad_material_processing.vapor_deposition.cvd import PartialVaporPressure, BubblerEvaporator, GasLine
 
-from nomad.search import search
-
-# from nomad_material_processing.utils import create_archive as create_archive_ref
-from nomad_material_processing import (
-    SubstrateReference,
-)
-from nomad_material_processing.vapor_deposition import (
-    MolarFlowRate,
-    Temperature,
-    Pressure,
-    VolumetricFlowRate,
-)
-from nomad_material_processing.vapor_deposition.cvd import (
-    PartialVaporPressure,
-    BubblerEvaporator,
-    GasLine,
-)
-
-from imem_plugin.movpe import (
-    BubblerSourceIMEM,
-    GasSourceIMEM,
-)
+from ikz_plugin.general.schema import IKZMOVPE2Category
+from ikz_plugin.movpe.schema import BubblerSourceIKZ, GasSourceIKZ
 from nomad.datamodel.datamodel import EntryArchive, EntryMetadata
-
 
 def get_reference(upload_id, entry_id):
     return f'../uploads/{upload_id}/archive/{entry_id}'
@@ -175,6 +157,90 @@ def create_archive(
 #             f"{file_name} archive file already exists."
 #             f"If you intend to reprocess the older archive file, remove the existing one and run reprocessing again."
 #         )
+
+def get_reference(upload_id, entry_id):
+    return f'../uploads/{upload_id}/archive/{entry_id}'
+
+
+def get_entry_id(upload_id, filename):
+    from nomad.utils import hash
+
+    return hash(upload_id, filename)
+
+
+def get_hash_ref(upload_id, filename):
+    return f'{get_reference(upload_id, get_entry_id(upload_id, filename))}#data'
+
+
+def nan_equal(a, b):
+    """
+    Compare two values with NaN values.
+    """
+    if isinstance(a, float) and isinstance(b, float):
+        return a == b or (math.isnan(a) and math.isnan(b))
+    elif isinstance(a, dict) and isinstance(b, dict):
+        return dict_nan_equal(a, b)
+    elif isinstance(a, list) and isinstance(b, list):
+        return list_nan_equal(a, b)
+    else:
+        return a == b
+
+
+def list_nan_equal(list1, list2):
+    """
+    Compare two lists with NaN values.
+    """
+    if len(list1) != len(list2):
+        return False
+    for a, b in zip(list1, list2):
+        if not nan_equal(a, b):
+            return False
+    return True
+
+
+def dict_nan_equal(dict1, dict2):
+    """
+    Compare two dictionaries with NaN values.
+    """
+    if set(dict1.keys()) != set(dict2.keys()):
+        return False
+    for key in dict1:
+        if not nan_equal(dict1[key], dict2[key]):
+            return False
+    return True
+
+
+def create_archive(
+    entry_dict, context, filename, file_type, logger, *, overwrite: bool = False
+):
+    from nomad.datamodel.context import ClientContext
+
+    if isinstance(context, ClientContext):
+        return None
+    if context.raw_path_exists(filename):
+        with context.raw_file(filename, 'r') as file:
+            existing_dict = yaml.safe_load(file)
+    if context.raw_path_exists(filename) and not dict_nan_equal(
+        existing_dict, entry_dict
+    ):
+        logger.error(
+            f'{filename} archive file already exists. '
+            f'You are trying to overwrite it with a different content. '
+            f'To do so, remove the existing archive and click reprocess again.'
+        )
+    if (
+        not context.raw_path_exists(filename)
+        or existing_dict == entry_dict
+        or overwrite
+    ):
+        with context.raw_file(filename, 'w') as newfile:
+            if file_type == 'json':
+                json.dump(entry_dict, newfile)
+            elif file_type == 'yaml':
+                yaml.dump(entry_dict, newfile)
+        context.upload.process_updated_raw_file(filename, allow_modify=True)
+
+    return get_hash_ref(context.upload_id, filename)
 
 
 def df_value(dataframe, column_header, index=None):
@@ -364,9 +430,11 @@ def clean_dataframe_headers(dataframe: pd.DataFrame) -> pd.DataFrame:
     return dataframe
 
 
-
 def fetch_substrate(archive, sample_id, substrate_id, logger):
-    from nomad.datamodel.context import ServerContext
+    from nomad.datamodel.context import ClientContext, ServerContext
+    from nomad.app.v1.models.models import User
+    from nomad.search import search
+
     substrate_reference_str = None
     search_result = search(
         owner='all',
@@ -438,7 +506,7 @@ def populate_sources(line_number, growth_run_file: pd.DataFrame):
             for key in bubbler_quantities
         ):
             sources.append(
-                BubblerSourceIMEM(
+                BubblerSourceIKZ(
                     name=growth_run_file.get(
                         f"Bubbler Material{'' if i == 0 else '.' + str(i)}", ''
                     )[line_number],
@@ -548,7 +616,7 @@ def populate_gas_source(line_number, growth_run_file: pd.DataFrame):
             for key in gas_source_quantities
         ):
             gas_sources.append(
-                GasSourceIMEM(
+                GasSourceIKZ(
                     name=growth_run_file.get(
                         f"Gas Material{'' if i == 0 else '.' + str(i)}", ''
                     )[line_number],
@@ -592,3 +660,66 @@ def populate_gas_source(line_number, growth_run_file: pd.DataFrame):
         else:
             break
     return gas_sources
+
+
+def populate_element(line_number, substrates_file: pd.DataFrame):
+    """
+    Populate the GasSource object from the growth run file
+    """
+    elements = []
+    elements_quantities = [
+        'Elements',
+    ]
+    i = 0
+    while True:
+        if all(
+            f"{key}{'' if i == 0 else '.' + str(i)}" in substrates_file.columns
+            for key in elements_quantities
+        ):
+            element = substrates_file.get(
+                f"Elements{'' if i == 0 else '.' + str(i)}", ''
+            )[line_number]
+            if not pd.isna(element):
+                elements.append(
+                    ElementalComposition(
+                        element=element,
+                    )
+                )
+            i += 1
+        else:
+            break
+    return elements
+
+
+def populate_dopant(line_number, substrates_file: pd.DataFrame):
+    """
+    Populate the GasSource object from the growth run file
+    """
+    dopants = []
+    dopant_quantities = [
+        'Doping species',
+        'Doping Level',
+    ]
+    i = 0
+    while True:
+        if all(
+            f"{key}{'' if i == 0 else '.' + str(i)}" in substrates_file.columns
+            for key in dopant_quantities
+        ):
+            doping_species = substrates_file.get(
+                f"Doping species{'' if i == 0 else '.' + str(i)}", ''
+            )[line_number]
+            doping_level = substrates_file.get(
+                f"Doping Level{'' if i == 0 else '.' + str(i)}", ''
+            )[line_number]
+            if not pd.isna(doping_species):
+                dopants.append(
+                    Dopant(
+                        element=doping_species,
+                        doping_level=doping_level,
+                    )
+                )
+            i += 1
+        else:
+            break
+    return dopants

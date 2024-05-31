@@ -61,7 +61,7 @@ Then, specify the Python package for the plugin in the options section:
 ```yaml
 options:
   parsers/movpe:
-    python_package: imem_plugin.movpe.growth_excel
+    python_package: imem_nomad_plugin.movpe.growth_excel
 ```
 
 This plugin has some other plugins as dependencies.

@@ -1,4 +1,0 @@
-plugin_type: schema
-name: IMEM CNR NOMAD plugin
-description: |
-  This is package that bundles all the available techniques in the NOMAD Oasis od the IMEM CNR.

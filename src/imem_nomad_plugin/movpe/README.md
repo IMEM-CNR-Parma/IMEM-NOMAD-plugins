@@ -1,8 +1,4 @@
-# MOVPE IKZ Plugin
-
-See also:
-
-[IMEM-NOMAD-plugins](https://github.com/IMEM-CNR-Parma/IMEM-NOMAD-plugins)
+# MOVPE IMEM Plugin
 
 [NOMAD Materials Processing plugin](https://github.com/FAIRmat-NFDI/nomad-material-processing)
 
@@ -25,7 +21,7 @@ The directory tree:
 ```bash
 IKZ_plugin/
 ├── src
-│   └── imem_plugin
+│   └── imem_nomad_plugin
 │       ├── __init__.py
 │       ├── movpe
 │       │   ├── growth_excel

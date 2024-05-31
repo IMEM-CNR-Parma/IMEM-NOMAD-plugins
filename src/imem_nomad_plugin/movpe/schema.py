@@ -85,13 +85,25 @@ from nomad_measurements import (
     ActivityReference,
 )
 
-from imem_plugin import (
+from nomad.config import config
+
+from imem_nomad_plugin.general.schema import (
     IMEMMOVPECategory,
     SubstratePreparationStepReference,
 )
-from imem_plugin.characterization import AFMmeasurement, LightMicroscope
+from imem_nomad_plugin.characterization.schema import AFMmeasurement, LightMicroscope
 
-m_package = Package(name="movpe_IMEM")
+#m_package = Package(name="movpe_IMEM")
+
+from nomad.metainfo import (
+    SchemaPackage,
+)
+
+configuration = config.get_plugin_entry_point(
+    'imem_nomad_plugin.movpe:movpe_schema'
+)
+
+m_package = SchemaPackage()
 
 
 class BubblerPrecursor(PureSubstance, EntryData):

@@ -15,5 +15,20 @@
 # limitations under the License.
 #
 
-from ikz_plugin.movpe.schema import *
-from .parser import *
+from nomad.config.models.plugins import SchemaPackageEntryPoint
+from pydantic import Field
+
+
+class CharacterizationSchemaPackageEntryPoint(SchemaPackageEntryPoint):
+    parameter: int = Field(0, description='Custom configuration parameter')
+
+    def load(self):
+        from imem_nomad_plugin.characterization.schema import m_package
+
+        return m_package
+
+
+characterization_schema = CharacterizationSchemaPackageEntryPoint(
+    name='CharacterizationSchema',
+    description='Schema package defined using the new plugin mechanism.',
+)
