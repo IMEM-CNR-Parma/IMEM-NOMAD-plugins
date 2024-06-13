@@ -60,16 +60,8 @@ from imem_nomad_plugin.movpe.schema import (
     FilamentTemperature,
     LayTecTemperature,
     SubstrateMovpe,
-)
-
-from ikz_plugin.general.schema import IKZMOVPECategory
-from ikz_plugin.utils import create_archive, typed_df_value
-from ikz_plugin.movpe.schema import (
-    SubstrateInventory,
-    SubstrateMovpe,
     SubstrateCrystalPropertiesMovpe,
     MiscutMovpe,
-    SubstrateMovpeReference,
 )
 
 from imem_nomad_plugin.utils import (
@@ -435,12 +427,44 @@ class ParserMovpeIMEM(MatchingParser):
         data_file_with_path = mainfile.split('raw/')[-1]
         filetype = 'yaml'
 
-        sheet = pd.read_excel(xlsx, 'Overview', comment='#', converters={'Sample': str})
-        overview_sheet = sheet.rename(columns=lambda x: x.strip())
+        # creates a new DataFrame with the stripped column names.
+        # sheet = pd.read_excel(xlsx, 'Overview', comment='#', converters={'Sample': str})
+        # overview_sheet = sheet.rename(columns=lambda x: x.strip())
+
+        overview_sheet = pd.read_excel(
+            xlsx, 'Overview', comment='#', converters={'Sample': str}
+        )
+        overview_sheet.columns = overview_sheet.columns.str.strip()
+
         substrates_sheet = pd.read_excel(xlsx, 'Substrate', comment='#')
         substrates_sheet.columns = substrates_sheet.columns.str.strip()
+
         growthrun_sheet = pd.read_excel(xlsx, 'GrowthRun', comment='#')
         growthrun_sheet.columns = growthrun_sheet.columns.str.strip()
+
+        precursors_sheet = pd.read_excel(xlsx, 'Precursors', comment='#')
+        precursors_sheet.columns = precursors_sheet.columns.str.strip()
+
+        mist_sheet = pd.read_excel(xlsx, 'Mist', comment='#')
+        mist_sheet.columns = mist_sheet.columns.str.strip()
+
+        pregrowth_sheet = pd.read_excel(xlsx, 'Pregrowth', comment='#')
+        pregrowth_sheet.columns = pregrowth_sheet.columns.str.strip()
+
+        samplecut_sheet = pd.read_excel(xlsx, 'SampleCut', comment='#')
+        samplecut_sheet.columns = samplecut_sheet.columns.str.strip()
+
+        hrxrd_sheet = pd.read_excel(xlsx, 'HRXRD', comment='#')
+        hrxrd_sheet.columns = hrxrd_sheet.columns.str.strip()
+
+        characterization_sheet = pd.read_excel(xlsx, 'AFMReflectanceSEM', comment='#')
+        characterization_sheet.columns = characterization_sheet.columns.str.strip()
+
+        electro_optical_sheet = pd.read_excel(xlsx, 'ElectroOptical', comment='#')
+        electro_optical_sheet.columns = electro_optical_sheet.columns.str.strip()
+
+        contacts_sheet = pd.read_excel(xlsx, 'Contacts', comment='#')
+        contacts_sheet.columns = contacts_sheet.columns.str.strip()
 
         sample_id = overview_sheet['Sample'][0]
 
@@ -452,7 +476,12 @@ class ParserMovpeIMEM(MatchingParser):
             )
             substrate_data = SubstrateMovpe(
                 lab_id=substrate_id,
+                supplier_id=typed_df_value(
+                    substrates_sheet, 'Substrate ID', str, index
+                ),
                 supplier=(typed_df_value(substrates_sheet, 'Supplier', str, index)),
+                name=typed_df_value(substrates_sheet, 'Material', str, index),
+                description=f"Description: {typed_df_value(substrates_sheet, 'Description', str, index)}, Notes: {typed_df_value(substrates_sheet, 'Notes', str, index)}",
                 geometry=Parallelepiped(
                     width=(typed_df_value(substrates_sheet, 'Size X', float, index)),
                     length=(typed_df_value(substrates_sheet, 'Size Y', float, index)),
@@ -474,6 +503,9 @@ class ParserMovpeIMEM(MatchingParser):
                 ),
                 elemental_composition=populate_element(index, substrates_sheet),
                 dopants=populate_dopant(index, substrates_sheet),
+                annealing=typed_df_value(substrates_sheet, 'Annealing', str, index),
+                cleaning=typed_df_value(substrates_sheet, 'Cleaning', str, index),
+                regrowth=typed_df_value(substrates_sheet, 'Regrowth', str, index),
             )
 
             substrate_archive = EntryArchive(
@@ -660,6 +692,9 @@ class ParserMovpeIMEM(MatchingParser):
             growth_process_object = GrowthMovpeIMEM(
                 name='Growth MOVPE',
                 lab_id=sample_id,
+                susceptor=typed_df_value(substrates_sheet, 'Susceptor', str, index),
+                mask=typed_df_value(substrates_sheet, 'Mask', str, index),
+                pocket=typed_df_value(substrates_sheet, 'Pocket', str, index),
             )
             growth_process_object.steps = process_steps_lists
 

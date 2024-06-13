@@ -20,8 +20,6 @@ from pydantic import Field
 
 
 class MovpeParserEntryPoint(ParserEntryPoint):
-    parameter: int = Field(0, description='Custom configuration parameter')
-
     def load(self):
         from imem_nomad_plugin.movpe.growth_excel.parser import ParserMovpeIMEM
 
@@ -33,10 +31,11 @@ movpe_growth_excel_parser = MovpeParserEntryPoint(
     description='Parser defined using the new plugin mechanism.',
     mainfile_name_re=r'.+\.xlsx',
     mainfile_mime_re='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    mainfile_contents_dict=
-    {
-        "Overview": { "__has_all_keys": ["Sample", "Substrate T", "VI III Ratio"] },
-        "Substrate": { "__has_all_keys": ["Substrates", "Orientation"] },
-        "GrowthRun": { "__has_all_keys": ["Name", "Flow Metal Carrier", "Flow Oxydant Carrier"] },
-    }
+    mainfile_contents_dict={
+        'Overview': {'__has_all_keys': ['Sample', 'Substrate T', 'VI III Ratio']},
+        'Substrate': {'__has_all_keys': ['Substrates', 'Orientation']},
+        'GrowthRun': {
+            '__has_all_keys': ['Name', 'Flow Metal Carrier', 'Flow Oxydant Carrier']
+        },
+    },
 )

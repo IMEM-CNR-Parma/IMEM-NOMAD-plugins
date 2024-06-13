@@ -334,42 +334,6 @@ class SubstrateMovpe(CrystallineSubstrate, EntryData):
     m_def = Section(
         label_quantity='lab_id', categories=[IMEMMOVPECategory], label='Substrate'
     )
-    as_received = Quantity(
-        type=bool,
-        description='Is the sample annealed?',
-        a_eln=ELNAnnotation(
-            component='BoolEditQuantity',
-        ),
-        # a_tabular={"name": "Substrate/As Received"},
-    )
-    etching = Quantity(
-        type=bool,
-        description='Usable Sample',
-        a_eln=ELNAnnotation(
-            component='BoolEditQuantity',
-        ),
-        # a_tabular={"name": "Substrate/Etching"},
-    )
-    annealing = Quantity(
-        type=bool,
-        description='Usable Sample',
-        a_eln=ELNAnnotation(
-            component='BoolEditQuantity',
-        ),
-        # a_tabular={"name": "Substrate/Annealing"},
-    )
-    # annealing_temperature = Quantity(
-    #     type=np.float64,
-    #     description='FILL THE DESCRIPTION',
-    #     a_tabular={
-    #         "name": "Substrate/Annealing Temperature"
-    #     },
-    #     a_eln={
-    #         "component": "NumberEditQuantity",
-    #         "defaultDisplayUnit": "celsius"
-    #     },
-    #     unit="celsius",
-    # )
     tags = Quantity(
         type=str,
         description='FILL',
@@ -379,37 +343,26 @@ class SubstrateMovpe(CrystallineSubstrate, EntryData):
         ),
         a_tabular={'name': 'Substrate/Substrate Box'},
     )
-    re_etching = Quantity(
+    annealing = Quantity(
         type=bool,
-        description='Usable Sample',
+        description='Annealing',
         a_eln=ELNAnnotation(
             component='BoolEditQuantity',
         ),
-        a_tabular={'name': 'Substrate/Re-Etching'},
     )
-    re_annealing = Quantity(
+    cleaning = Quantity(
         type=bool,
-        description='Usable Sample',
+        description='Cleaning',
         a_eln=ELNAnnotation(
             component='BoolEditQuantity',
         ),
-        a_tabular={'name': 'Substrate/Re-Annealing'},
     )
-    epi_ready = Quantity(
+    regrowth = Quantity(
         type=bool,
-        description='Sample ready for epitaxy',
+        description='Regrowth',
         a_eln=ELNAnnotation(
             component='BoolEditQuantity',
         ),
-        a_tabular={'name': 'Substrate/Epi Ready'},
-    )
-    quality = Quantity(
-        type=str,
-        description='Defective Sample',
-        a_eln=ELNAnnotation(
-            component='StringEditQuantity',
-        ),
-        a_tabular={'name': 'Substrate/Quality'},
     )
     information_sheet = Quantity(
         type=str,
@@ -1244,6 +1197,36 @@ class GrowthMovpeIMEM(VaporDeposition, EntryData):
         description='the ID from RTG',
         a_tabular={'name': 'GrowthRun/Recipe Name'},
         a_eln={'component': 'StringEditQuantity', 'label': 'Recipe ID'},
+    )
+    susceptor = Quantity(
+        type=str,
+        description="""
+        material of the susceptor adaptor
+        """,
+        a_eln=ELNAnnotation(
+            component='StringEditQuantity',
+            label='Step name',
+        ),
+    )
+    mask = Quantity(
+        type=str,
+        description="""
+        type and size of growth map
+        """,
+        a_eln=ELNAnnotation(
+            component='StringEditQuantity',
+            label='Step name',
+        ),
+    )
+    pocket = Quantity(
+        type=str,
+        description="""
+        position in the growth mask
+        """,
+        a_eln=ELNAnnotation(
+            component='StringEditQuantity',
+            label='Step name',
+        ),
     )
     steps = SubSection(
         section_def=GrowthStepMovpeIMEM,
