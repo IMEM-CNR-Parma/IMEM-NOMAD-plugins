@@ -31,15 +31,29 @@ from nomad.parsing import MatchingParser
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from nomad.datamodel.data import EntryData
 from nomad.units import ureg
-from nomad.datamodel.metainfo.basesections import SystemComponent, CompositeSystemReference, ElementalComposition, PureSubstanceComponent, PureSubstanceSection
+from nomad.datamodel.metainfo.basesections import (
+    SystemComponent,
+    CompositeSystemReference,
+    ElementalComposition,
+    PureSubstanceComponent,
+    PureSubstanceSection,
+)
 
 from nomad_material_processing import Dopant, SubstrateReference
-from nomad_material_processing.vapor_deposition import MolarFlowRate, Temperature, Pressure, VolumetricFlowRate
-from nomad_material_processing.vapor_deposition.cvd import PartialVaporPressure, BubblerEvaporator, GasLine
+from nomad_material_processing.vapor_deposition import (
+    MolarFlowRate,
+    Temperature,
+    Pressure,
+    VolumetricFlowRate,
+)
+from nomad_material_processing.vapor_deposition.cvd import (
+    PartialVaporPressure,
+    BubblerEvaporator,
+    GasLine,
+)
 
-from ikz_plugin.general.schema import IKZMOVPE2Category
-from ikz_plugin.movpe.schema import BubblerSourceIKZ, GasSourceIKZ
 from nomad.datamodel.datamodel import EntryArchive, EntryMetadata
+
 
 def get_reference(upload_id, entry_id):
     return f'../uploads/{upload_id}/archive/{entry_id}'
@@ -158,90 +172,6 @@ def create_archive(
 #             f"If you intend to reprocess the older archive file, remove the existing one and run reprocessing again."
 #         )
 
-def get_reference(upload_id, entry_id):
-    return f'../uploads/{upload_id}/archive/{entry_id}'
-
-
-def get_entry_id(upload_id, filename):
-    from nomad.utils import hash
-
-    return hash(upload_id, filename)
-
-
-def get_hash_ref(upload_id, filename):
-    return f'{get_reference(upload_id, get_entry_id(upload_id, filename))}#data'
-
-
-def nan_equal(a, b):
-    """
-    Compare two values with NaN values.
-    """
-    if isinstance(a, float) and isinstance(b, float):
-        return a == b or (math.isnan(a) and math.isnan(b))
-    elif isinstance(a, dict) and isinstance(b, dict):
-        return dict_nan_equal(a, b)
-    elif isinstance(a, list) and isinstance(b, list):
-        return list_nan_equal(a, b)
-    else:
-        return a == b
-
-
-def list_nan_equal(list1, list2):
-    """
-    Compare two lists with NaN values.
-    """
-    if len(list1) != len(list2):
-        return False
-    for a, b in zip(list1, list2):
-        if not nan_equal(a, b):
-            return False
-    return True
-
-
-def dict_nan_equal(dict1, dict2):
-    """
-    Compare two dictionaries with NaN values.
-    """
-    if set(dict1.keys()) != set(dict2.keys()):
-        return False
-    for key in dict1:
-        if not nan_equal(dict1[key], dict2[key]):
-            return False
-    return True
-
-
-def create_archive(
-    entry_dict, context, filename, file_type, logger, *, overwrite: bool = False
-):
-    from nomad.datamodel.context import ClientContext
-
-    if isinstance(context, ClientContext):
-        return None
-    if context.raw_path_exists(filename):
-        with context.raw_file(filename, 'r') as file:
-            existing_dict = yaml.safe_load(file)
-    if context.raw_path_exists(filename) and not dict_nan_equal(
-        existing_dict, entry_dict
-    ):
-        logger.error(
-            f'{filename} archive file already exists. '
-            f'You are trying to overwrite it with a different content. '
-            f'To do so, remove the existing archive and click reprocess again.'
-        )
-    if (
-        not context.raw_path_exists(filename)
-        or existing_dict == entry_dict
-        or overwrite
-    ):
-        with context.raw_file(filename, 'w') as newfile:
-            if file_type == 'json':
-                json.dump(entry_dict, newfile)
-            elif file_type == 'yaml':
-                yaml.dump(entry_dict, newfile)
-        context.upload.process_updated_raw_file(filename, allow_modify=True)
-
-    return get_hash_ref(context.upload_id, filename)
-
 
 def df_value(dataframe, column_header, index=None):
     """
@@ -261,9 +191,8 @@ def typed_df_value(dataframe, column_header, value_type, index=None):
     value = df_value(dataframe, column_header, index)
     if value_type is str:
         return str(value)
-    if isinstance(value, value_type):
+    else:
         return value
-    return None
 
 
 def row_to_array(dataframe: pd.DataFrame, quantity: str, row_index: int) -> pd.Series:
@@ -487,16 +416,16 @@ def populate_sources(line_number, growth_run_file: pd.DataFrame):
     """
     Populate the Bubbler object from the growth run file
     """
+    from imem_nomad_plugin.movpe.schema import BubblerSourceIMEM, GasSourceIMEM
+
     sources = []
     bubbler_quantities = [
         'Bubbler Temp',
         'Bubbler Pressure',
-        'Bubbler Partial Pressure',
+        'Partial Pressure',
         'Bubbler Dilution',
-        'Source',
         'Inject',
-        'Bubbler MFC',
-        'Bubbler Molar Flux',
+        'Bubbler Flow',
         'Bubbler Material',
     ]
     i = 0
@@ -506,7 +435,7 @@ def populate_sources(line_number, growth_run_file: pd.DataFrame):
             for key in bubbler_quantities
         ):
             sources.append(
-                BubblerSourceIKZ(
+                BubblerSourceIMEM(
                     name=growth_run_file.get(
                         f"Bubbler Material{'' if i == 0 else '.' + str(i)}", ''
                     )[line_number],
@@ -550,7 +479,7 @@ def populate_sources(line_number, growth_run_file: pd.DataFrame):
                             set_value=pd.Series(
                                 [
                                     growth_run_file.get(
-                                        f"Bubbler Partial Pressure{'' if i == 0 else '.' + str(i)}",
+                                        f"Partial Pressure{'' if i == 0 else '.' + str(i)}",
                                         0,
                                     )[line_number]
                                 ]
@@ -560,7 +489,7 @@ def populate_sources(line_number, growth_run_file: pd.DataFrame):
                             set_value=pd.Series(
                                 [
                                     growth_run_file.get(
-                                        f"Bubbler MFC{'' if i == 0 else '.' + str(i)}",
+                                        f"Bubbler Flow{'' if i == 0 else '.' + str(i)}",
                                         0,
                                     )[line_number]
                                 ]
@@ -572,24 +501,21 @@ def populate_sources(line_number, growth_run_file: pd.DataFrame):
                         dilution=growth_run_file.get(
                             f"Bubbler Dilution{'' if i == 0 else '.' + str(i)}", 0
                         )[line_number],
-                        source=growth_run_file.get(
-                            f"Source{'' if i == 0 else '.' + str(i)}", 0
-                        )[line_number],
                         inject=growth_run_file.get(
                             f"Inject{'' if i == 0 else '.' + str(i)}", 0
                         )[line_number],
                     ),
-                    vapor_molar_flow_rate=MolarFlowRate(
-                        set_value=pd.Series(
-                            [
-                                growth_run_file.get(
-                                    f"Bubbler Molar Flux{'' if i == 0 else '.' + str(i)}",
-                                    0,
-                                )[line_number]
-                            ]
-                        )
-                        * ureg('mol / minute').to('mol / second').magnitude,
-                    ),
+                    # vapor_molar_flow_rate=MolarFlowRate(
+                    #     set_value=pd.Series(
+                    #         [
+                    #             growth_run_file.get(
+                    #                 f"Bubbler Molar Flux{'' if i == 0 else '.' + str(i)}",
+                    #                 0,
+                    #             )[line_number]
+                    #         ]
+                    #     )
+                    #     * ureg('mol / minute').to('mol / second').magnitude,
+                    # ),
                 ),
             )
 
@@ -616,7 +542,7 @@ def populate_gas_source(line_number, growth_run_file: pd.DataFrame):
             for key in gas_source_quantities
         ):
             gas_sources.append(
-                GasSourceIKZ(
+                GasSourceIMEM(
                     name=growth_run_file.get(
                         f"Gas Material{'' if i == 0 else '.' + str(i)}", ''
                     )[line_number],
