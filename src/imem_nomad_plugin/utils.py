@@ -49,7 +49,6 @@ from nomad_material_processing.vapor_deposition import (
 from nomad_material_processing.vapor_deposition.cvd import (
     PartialVaporPressure,
     BubblerEvaporator,
-    GasLine,
 )
 
 from nomad.datamodel.datamodel import EntryArchive, EntryMetadata
@@ -416,7 +415,7 @@ def populate_sources(line_number, growth_run_file: pd.DataFrame):
     """
     Populate the Bubbler object from the growth run file
     """
-    from imem_nomad_plugin.movpe.schema import BubblerSourceIMEM, GasSourceIMEM
+    from imem_nomad_plugin.movpe.schema import BubblerSourceIMEM
 
     sources = []
     bubbler_quantities = [
@@ -529,11 +528,17 @@ def populate_gas_source(line_number, growth_run_file: pd.DataFrame):
     """
     Populate the GasSource object from the growth run file
     """
+    from imem_nomad_plugin.movpe.schema import GasSourceIMEM, GasLineIMEM
+
     gas_sources = []
     gas_source_quantities = [
-        'Gas Material',
-        'Gas MFC',
-        'Gas Molar Flux',
+        'Gas Cylinder Material',
+        'Dilution in Cylinder',
+        'Flow from MFC',
+        'Effective  Flow',
+        'Gas Partial Pressure',
+        'Cylinder Pressure',
+        'Gas Valve',
     ]
     i = 0
     while True:
@@ -544,42 +549,82 @@ def populate_gas_source(line_number, growth_run_file: pd.DataFrame):
             gas_sources.append(
                 GasSourceIMEM(
                     name=growth_run_file.get(
-                        f"Gas Material{'' if i == 0 else '.' + str(i)}", ''
+                        f"Gas Cylinder Material{'' if i == 0 else '.' + str(i)}", ''
+                    )[line_number],
+                    dilution_in_cylinder=growth_run_file.get(
+                        f"Dilution in Cylinder{'' if i == 0 else '.' + str(i)}", ''
+                    )[line_number],
+                    gas_valve=growth_run_file.get(
+                        f"Gas Valve{'' if i == 0 else '.' + str(i)}", ''
                     )[line_number],
                     material=[
                         PureSubstanceComponent(
                             substance_name=growth_run_file.get(
-                                f"Gas Material{'' if i == 0 else '.' + str(i)}", ''
+                                f"Gas Cylinder Material{'' if i == 0 else '.' + str(i)}",
+                                '',
                             )[line_number],
                             pure_substance=PureSubstanceSection(
                                 name=growth_run_file.get(
-                                    f"Gas Material{'' if i == 0 else '.' + str(i)}", ''
+                                    f"Gas Cylinder Material{'' if i == 0 else '.' + str(i)}",
+                                    '',
                                 )[line_number]
                             ),
                         ),
                     ],
-                    vapor_source=GasLine(
+                    vapor_source=GasLineIMEM(
+                        pressure=Pressure(
+                            set_value=pd.Series(
+                                [
+                                    growth_run_file.get(
+                                        f"Cylinder Pressure{'' if i == 0 else '.' + str(i)}",
+                                        0,
+                                    )[line_number]
+                                ]
+                            )
+                            * ureg('mbar').to('pascal').magnitude,
+                        ),
+                        precursor_partial_pressure=PartialVaporPressure(
+                            set_value=pd.Series(
+                                [
+                                    growth_run_file.get(
+                                        f"Gas Partial Pressure{'' if i == 0 else '.' + str(i)}",
+                                        0,
+                                    )[line_number]
+                                ]
+                            ),
+                        ),
                         total_flow_rate=VolumetricFlowRate(
                             set_value=pd.Series(
                                 [
                                     growth_run_file.get(
-                                        f"Gas MFC{'' if i == 0 else '.' + str(i)}", 0
+                                        f"Flow from MFC{'' if i == 0 else '.' + str(i)}",
+                                        0,
+                                    )[line_number]
+                                ]
+                            ),
+                        ),
+                        effective_flow_rate=VolumetricFlowRate(
+                            set_value=pd.Series(
+                                [
+                                    growth_run_file.get(
+                                        f"Effective  Flow{'' if i == 0 else '.' + str(i)}",
+                                        0,
                                     )[line_number]
                                 ]
                             ),
                         ),
                     ),
-                    vapor_molar_flow_rate=MolarFlowRate(
-                        set_value=pd.Series(
-                            [
-                                growth_run_file.get(
-                                    f"Gas Molar Flux{'' if i == 0 else '.' + str(i)}",
-                                    0,
-                                )[line_number]
-                            ]
-                        )
-                        * ureg('mol / minute').to('mol / second').magnitude,
-                    ),
+                    # vapor_molar_flow_rate=MolarFlowRate(
+                    #     set_value=pd.Series(
+                    #         [
+                    #             growth_run_file.get(
+                    #                 f"Gas Molar Flux{'' if i == 0 else '.' + str(i)}",
+                    #                 0,
+                    #             )[line_number]
+                    #         ]
+                    #     )
+                    #     * ureg('mol / minute').to('mol / second').magnitude,
+                    # ),
                 )
             )
             i += 1

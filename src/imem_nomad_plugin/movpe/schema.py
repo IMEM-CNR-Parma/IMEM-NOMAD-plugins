@@ -79,6 +79,7 @@ from nomad_material_processing.vapor_deposition.cvd import (
     CVDSource,
     Rotation,
     GasSupply,
+    GasLine,
 )
 
 from nomad_measurements import (
@@ -113,7 +114,7 @@ def is_activity_section(section):
 def handle_section(section):
     if hasattr(section, 'reference') and is_activity_section(section.reference):
         return [ExperimentStep(activity=section.reference, name=section.reference.name)]
-    if section.m_def.label == 'CharacterizationMovpe':
+    if section.m_def.label == 'CharacterizationMovpeIMEM':
         sub_sect_list = []
         for sub_section in vars(section).values():
             if isinstance(sub_section, list):
@@ -738,15 +739,11 @@ class LiMimeasurementReference(SectionReference):
     )
 
 
-class CharacterizationMovpe(ArchiveSection):
+class CharacterizationMovpeIMEM(ArchiveSection):
     """
     A wrapped class to gather all the characterization methods in MOVPE
     """
 
-    in_situ_reflectance = SubSection(
-        section_def=InSituMonitoringReference,
-        repeats=True,
-    )
     hall = SubSection(
         section_def=HallMeasurementReference,
         repeats=True,
@@ -800,9 +797,34 @@ class FlashSourceIMEM(CVDSource):
     )
 
 
+class GasLineIMEM(GasLine):
+    """
+    A gas line used in MOVPE
+    """
+
+    effective_flow_rate = SubSection(
+        section_def=VolumetricFlowRate,
+        description="""
+        Effective flow rate, to be defined better.
+        """,
+    )
+
+
 class GasSourceIMEM(CVDSource):
+    dilution_in_cylinder = Quantity(
+        type=np.float64,
+        description='FILL THE DESCRIPTION',
+        a_eln={'component': 'NumberEditQuantity'},
+    )
+    gas_valve = Quantity(
+        type=bool,
+        description='is the valve open?',
+        a_eln=ELNAnnotation(
+            component='BoolEditQuantity',
+        ),
+    )
     vapor_source = SubSection(
-        section_def=GasSupply,
+        section_def=GasLineIMEM,
     )
 
 
@@ -1070,7 +1092,6 @@ class GrowthMovpeIMEM(VaporDeposition, EntryData):
         """,
         a_eln=ELNAnnotation(
             component='StringEditQuantity',
-            label='Step name',
         ),
     )
     mask = Quantity(
@@ -1080,7 +1101,6 @@ class GrowthMovpeIMEM(VaporDeposition, EntryData):
         """,
         a_eln=ELNAnnotation(
             component='StringEditQuantity',
-            label='Step name',
         ),
     )
     pocket = Quantity(
@@ -1090,7 +1110,6 @@ class GrowthMovpeIMEM(VaporDeposition, EntryData):
         """,
         a_eln=ELNAnnotation(
             component='StringEditQuantity',
-            label='Step name',
         ),
     )
     steps = SubSection(
@@ -1229,7 +1248,7 @@ class ExperimentMovpeIMEM(Experiment, EntryData):
     growth_run = SubSection(
         section_def=GrowthMovpeIMEMReference,
     )
-    characterization = SubSection(section_def=CharacterizationMovpe)
+    characterization = SubSection(section_def=CharacterizationMovpeIMEM)
 
     steps = SubSection(
         section_def=ActivityReference,

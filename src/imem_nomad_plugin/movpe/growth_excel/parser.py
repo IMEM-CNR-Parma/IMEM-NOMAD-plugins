@@ -663,7 +663,8 @@ class ParserMovpeIMEM(MatchingParser):
                     comment=(
                         step['Notes'] if 'Notes' in growthrun_sheet.columns else None
                     ),
-                    sources=populate_sources(step_index, growthrun_sheet),
+                    sources=populate_sources(step_index, growthrun_sheet)
+                    + populate_gas_source(step_index, growthrun_sheet),
                     environment=ChamberEnvironmentMovpe(
                         pressure=Pressure(
                             set_time=(pd.Series([0])),
