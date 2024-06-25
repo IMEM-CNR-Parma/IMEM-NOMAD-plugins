@@ -570,55 +570,55 @@ class SampleCutIMEM(Process, EntryData):
         repeats=True,
     )
 
-    def normalize(self, archive, logger):
-        from nomad.datamodel import EntryArchive, EntryMetadata
+    # def normalize(self, archive, logger):
+    #     from nomad.datamodel import EntryArchive, EntryMetadata
 
-        super(SampleCutIMEM, self).normalize(archive, logger)
-        filetype = 'yaml'
-        if not self.number_of_samples:
-            logger.error(
-                f"Error in SampleCut: 'number_of_samples' expected, but None found."
-            )
-        if not self.parent_sample:
-            logger.error(
-                f"Error in SampleCut: 'parent_sample' expected, but None found."
-            )
-        if self.children_samples:
-            logger.error(
-                f'Error in SampleCut: No children samples expected,'
-                f' but {len(self.children_samples)} children samples given.'
-                f' Remove the children samples and save again.'
-            )
-        generated_samples = []
-        if self.parent_sample and self.number_of_samples:
-            for sample_index in range(self.number_of_samples):
-                children_filename = f'{self.parent_sample.reference.lab_id}_child{sample_index}.CompositeSystem.archive.{filetype}'
-                children_object = self.parent_sample.reference.m_copy(deep=True)
-                children_object.name = (
-                    f'{self.parent_sample.reference.lab_id}_child{sample_index}'
-                )
-                children_object.lab_id = (
-                    f'{self.parent_sample.reference.lab_id}_child{sample_index}'
-                )
-                children_archive = EntryArchive(
-                    data=children_object,
-                    m_context=archive.m_context,
-                    metadata=EntryMetadata(upload_id=archive.m_context.upload_id),
-                )
-                create_archive(
-                    children_archive.m_to_dict(),
-                    archive.m_context,
-                    children_filename,
-                    filetype,
-                    logger,
-                )
-                generated_samples.append(
-                    CompositeSystemReference(
-                        name=children_object.name,
-                        reference=f'../uploads/{archive.m_context.upload_id}/archive/{hash(archive.m_context.upload_id, children_filename)}#data',
-                    ),
-                )
-            self.children_samples = generated_samples
+    #     super(SampleCutIMEM, self).normalize(archive, logger)
+    #     filetype = 'yaml'
+    #     if not self.number_of_samples:
+    #         logger.error(
+    #             f"Error in SampleCut: 'number_of_samples' expected, but None found."
+    #         )
+    #     if not self.parent_sample:
+    #         logger.error(
+    #             f"Error in SampleCut: 'parent_sample' expected, but None found."
+    #         )
+    #     if self.children_samples:
+    #         logger.error(
+    #             f'Error in SampleCut: No children samples expected,'
+    #             f' but {len(self.children_samples)} children samples given.'
+    #             f' Remove the children samples and save again.'
+    #         )
+    #     generated_samples = []
+    #     if self.parent_sample and self.number_of_samples:
+    #         for sample_index in range(self.number_of_samples):
+    #             children_filename = f'{self.parent_sample.reference.lab_id}_child{sample_index}.CompositeSystem.archive.{filetype}'
+    #             children_object = self.parent_sample.reference.m_copy(deep=True)
+    #             children_object.name = (
+    #                 f'{self.parent_sample.reference.lab_id}_child{sample_index}'
+    #             )
+    #             children_object.lab_id = (
+    #                 f'{self.parent_sample.reference.lab_id}_child{sample_index}'
+    #             )
+    #             children_archive = EntryArchive(
+    #                 data=children_object,
+    #                 m_context=archive.m_context,
+    #                 metadata=EntryMetadata(upload_id=archive.m_context.upload_id),
+    #             )
+    #             create_archive(
+    #                 children_archive.m_to_dict(),
+    #                 archive.m_context,
+    #                 children_filename,
+    #                 filetype,
+    #                 logger,
+    #             )
+    #             generated_samples.append(
+    #                 CompositeSystemReference(
+    #                     name=children_object.name,
+    #                     reference=f'../uploads/{archive.m_context.upload_id}/archive/{hash(archive.m_context.upload_id, children_filename)}#data',
+    #                 ),
+    #             )
+    #         self.children_samples = generated_samples
 
 
 m_package.__init_metainfo__()

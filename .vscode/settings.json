@@ -10,6 +10,9 @@
         "editor.tabSize": 2
     },
     "files.trimTrailingWhitespace": true,
+    "files.watcherExclude": {
+    "${workspaceFolder}/.pyenv/**": true
+    },
     "python.linting.pylintArgs": [
         "--rcfile=${workspaceFolder}/.pylintrc"
     ],
@@ -22,9 +25,6 @@
         "--follow-imports=silent",
         "--no-strict-optional"
     ],
-    "files.watcherExclude": {
-      "${workspaceFolder}/.pyenv/**": true,
-    },
     "python.linting.enabled": true,
     "python.testing.unittestEnabled": false,
     "editor.defaultFormatter": "charliermarsh.ruff",
