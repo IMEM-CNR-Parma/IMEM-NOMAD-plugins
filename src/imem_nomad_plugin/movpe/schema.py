@@ -753,6 +753,13 @@ class XRDmeasurementReference(SectionReference):
     A section used for referencing a LightMicroscope.
     """
 
+    sample_id = Quantity(
+        type=str,
+        description='The sample to be linked within the XRD measurement',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.StringEditQuantity,
+        ),
+    )
     reference = Quantity(
         type=ELNXRayDiffraction,
         description='A reference to a NOMAD `ELNXRayDiffraction` entry.',
@@ -808,24 +815,17 @@ class XRDmeasurementReference(SectionReference):
         type=str,
         description='Notes and comments.',
         a_eln=ELNAnnotation(
-            component=ELNComponentEnum.StringEditQuantity,
-            label='Notes',
+            component=ELNComponentEnum.RichTextEditQuantity,
         ),
     )
 
     def normalize(self, archive, logger):
         super(XRDmeasurementReference, self).normalize(archive, logger)
-        if hasattr(self, 'reference') and hasattr(self, 'name'):
-            print('yo')
-            # sample_list = []
-            # sample_list.append(
-            #     CompositeSystemReference(
-            #         lab_id=self.name,
-            #     ),
-            # )
-            # self.reference.samples = sample_list
-            # self.reference.samples[0].normalize(archive, logger)
-
+        if (
+            hasattr(self, 'reference')
+            and self.reference is not None
+            and hasattr(self, 'sample_id')
+        ):
             from nomad.datamodel.context import ServerContext
             from nomad.app.v1.routers.uploads import get_upload_with_read_access
             from nomad.datamodel.data import User
@@ -844,10 +844,10 @@ class XRDmeasurementReference(SectionReference):
             with archive.m_context.raw_file(
                 self.reference.m_parent.metadata.mainfile, 'r'
             ) as xrd_file:
-                updated_xrd_file = yaml.safe_load(xrd_file)
+                updated_xrd_file = json.load(xrd_file)
                 updated_xrd_file['data']['samples'] = [
                     CompositeSystemReference(
-                        lab_id=self.name,
+                        lab_id=self.sample_id,
                     ).m_to_dict()
                 ]
 

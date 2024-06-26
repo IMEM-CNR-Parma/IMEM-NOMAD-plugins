@@ -55,7 +55,7 @@ from nomad.datamodel.datamodel import EntryArchive, EntryMetadata
 
 
 def get_reference(upload_id, entry_id):
-    return f"../uploads/{upload_id}/archive/{entry_id}"
+    return f'../uploads/{upload_id}/archive/{entry_id}'
 
 
 def get_entry_id(upload_id, filename):
@@ -65,7 +65,7 @@ def get_entry_id(upload_id, filename):
 
 
 def get_hash_ref(upload_id, filename):
-    return f"{get_reference(upload_id, get_entry_id(upload_id, filename))}#data"
+    return f'{get_reference(upload_id, get_entry_id(upload_id, filename))}#data'
 
 
 def nan_equal(a, b):
@@ -117,21 +117,21 @@ def create_archive(
     if isinstance(context, ClientContext):
         return None
     if file_exists:
-        with context.raw_file(filename, "r") as file:
+        with context.raw_file(filename, 'r') as file:
             existing_dict = yaml.safe_load(file)
             dicts_are_equal = dict_nan_equal(existing_dict, entry_dict)
     if not file_exists or overwrite or dicts_are_equal:
-        with context.raw_file(filename, "w") as newfile:
-            if file_type == "json":
+        with context.raw_file(filename, 'w') as newfile:
+            if file_type == 'json':
                 json.dump(entry_dict, newfile)
-            elif file_type == "yaml":
+            elif file_type == 'yaml':
                 yaml.dump(entry_dict, newfile)
         context.upload.process_updated_raw_file(filename, allow_modify=True)
     elif file_exists and not overwrite and not dicts_are_equal:
         logger.error(
-            f"{filename} archive file already exists. "
-            f"You are trying to overwrite it with a different content. "
-            f"To do so, remove the existing archive and click reprocess again."
+            f'{filename} archive file already exists. '
+            f'You are trying to overwrite it with a different content. '
+            f'To do so, remove the existing archive and click reprocess again.'
         )
     return get_hash_ref(context.upload_id, filename)
 
@@ -332,7 +332,7 @@ def clean_dataframe_headers(dataframe: pd.DataFrame) -> pd.DataFrame:
     # Iterate over the columns
     for col in dataframe.iloc[0]:
         # Clean up the column name
-        col = re.sub(r"\s+", " ", str(col).strip())
+        col = re.sub(r'\s+', ' ', str(col).strip())
         # If the column name is in the dictionary, increment the count
         if col in column_counts:
             column_counts[col] += 1
@@ -341,7 +341,7 @@ def clean_dataframe_headers(dataframe: pd.DataFrame) -> pd.DataFrame:
             column_counts[col] = 1
         # If the count is greater than 1, append it to the column name
         if column_counts[col] > 1:
-            col = f"{col}.{column_counts[col] - 1}"
+            col = f'{col}.{column_counts[col] - 1}'
         # Add the column name to the list of new column names
         new_columns.append(col)
     # Assign the new column names to the DataFrame
@@ -361,26 +361,26 @@ def fetch_substrate(archive, sample_id, substrate_id, logger):
 
     substrate_reference_str = None
     search_result = search(
-        owner="all",
+        owner='all',
         query={
-            "results.eln.sections:any": ["SubstrateMovpe", "Substrate"],
-            "results.eln.lab_ids:any": [substrate_id],
+            'results.eln.sections:any': ['SubstrateMovpe', 'Substrate'],
+            'results.eln.lab_ids:any': [substrate_id],
         },
         user_id=archive.metadata.main_author.user_id,
     )
     if not search_result.data:
         logger.warn(
-            f"Substrate entry [{substrate_id}] was not found, upload and reprocess to reference it in ThinFilmStack entry [{sample_id}]"
+            f'Substrate entry [{substrate_id}] was not found, upload and reprocess to reference it in ThinFilmStack entry [{sample_id}]'
         )
         return None
     if len(search_result.data) > 1:
         logger.warn(
-            f"Found {search_result.pagination.total} entries with lab_id: "
+            f'Found {search_result.pagination.total} entries with lab_id: '
             f'"{substrate_id}". Will use the first one found.'
         )
         return None
     if len(search_result.data) >= 1:
-        upload_id = search_result.data[0]["upload_id"]
+        upload_id = search_result.data[0]['upload_id']
         from nomad.files import UploadFiles
         from nomad.app.v1.routers.uploads import get_upload_with_read_access
 
@@ -415,13 +415,13 @@ def populate_sources(line_number, growth_run_file: pd.DataFrame):
 
     sources = []
     bubbler_quantities = [
-        "Bubbler Temp",
-        "Bubbler Pressure",
-        "Partial Pressure",
-        "Bubbler Dilution",
-        "Inject",
-        "Bubbler Flow",
-        "Bubbler Material",
+        'Bubbler Temp',
+        'Bubbler Pressure',
+        'Partial Pressure',
+        'Bubbler Dilution',
+        'Inject',
+        'Bubbler Flow',
+        'Bubbler Material',
     ]
     i = 0
     while True:
@@ -432,17 +432,17 @@ def populate_sources(line_number, growth_run_file: pd.DataFrame):
             sources.append(
                 BubblerSourceIMEM(
                     name=growth_run_file.get(
-                        f"Bubbler Material{'' if i == 0 else '.' + str(i)}", ""
+                        f"Bubbler Material{'' if i == 0 else '.' + str(i)}", ''
                     )[line_number],
                     material=[
                         PureSubstanceComponent(
                             substance_name=growth_run_file.get(
-                                f"Bubbler Material{'' if i == 0 else '.' + str(i)}", ""
+                                f"Bubbler Material{'' if i == 0 else '.' + str(i)}", ''
                             )[line_number],
                             pure_substance=PureSubstanceSection(
                                 name=growth_run_file.get(
                                     f"Bubbler Material{'' if i == 0 else '.' + str(i)}",
-                                    "",
+                                    '',
                                 )[line_number]
                             ),
                         ),
@@ -457,7 +457,7 @@ def populate_sources(line_number, growth_run_file: pd.DataFrame):
                                     )[line_number]
                                 ]
                             )
-                            * ureg("celsius").to("kelvin").magnitude,
+                            * ureg('celsius').to('kelvin').magnitude,
                         ),
                         pressure=Pressure(
                             set_value=pd.Series(
@@ -468,18 +468,18 @@ def populate_sources(line_number, growth_run_file: pd.DataFrame):
                                     )[line_number]
                                 ]
                             )
-                            * ureg("mbar").to("pascal").magnitude,
+                            * ureg('mbar').to('pascal').magnitude,
                         ),
-                        precursor_partial_pressure=PartialVaporPressure(
-                            set_value=pd.Series(
-                                [
-                                    growth_run_file.get(
-                                        f"Partial Pressure{'' if i == 0 else '.' + str(i)}",
-                                        0,
-                                    )[line_number]
-                                ]
-                            ),
-                        ),
+                        # precursor_partial_pressure=PartialVaporPressure(
+                        #     set_value=pd.Series(
+                        #         [
+                        #             growth_run_file.get(
+                        #                 f"Partial Pressure{'' if i == 0 else '.' + str(i)}",
+                        #                 0,
+                        #             )[line_number]
+                        #         ]
+                        #     ),
+                        # ),
                         total_flow_rate=VolumetricFlowRate(
                             set_value=pd.Series(
                                 [
@@ -489,8 +489,8 @@ def populate_sources(line_number, growth_run_file: pd.DataFrame):
                                     )[line_number]
                                 ]
                             )
-                            * ureg("cm **3 / minute")
-                            .to("meter ** 3 / second")
+                            * ureg('cm **3 / minute')
+                            .to('meter ** 3 / second')
                             .magnitude,
                         ),
                         dilution=growth_run_file.get(
@@ -528,13 +528,13 @@ def populate_gas_source(line_number, growth_run_file: pd.DataFrame):
 
     gas_sources = []
     gas_source_quantities = [
-        "Gas Cylinder Material",
-        "Dilution in Cylinder",
-        "Flow from MFC",
-        "Effective  Flow",
-        "Gas Partial Pressure",
-        "Cylinder Pressure",
-        "Gas Valve",
+        'Gas Cylinder Material',
+        'Dilution in Cylinder',
+        'Flow from MFC',
+        'Effective  Flow',
+        'Gas Partial Pressure',
+        'Cylinder Pressure',
+        'Gas Valve',
     ]
     i = 0
     while True:
@@ -545,24 +545,24 @@ def populate_gas_source(line_number, growth_run_file: pd.DataFrame):
             gas_sources.append(
                 GasSourceIMEM(
                     name=growth_run_file.get(
-                        f"Gas Cylinder Material{'' if i == 0 else '.' + str(i)}", ""
+                        f"Gas Cylinder Material{'' if i == 0 else '.' + str(i)}", ''
                     )[line_number],
                     dilution_in_cylinder=growth_run_file.get(
-                        f"Dilution in Cylinder{'' if i == 0 else '.' + str(i)}", ""
+                        f"Dilution in Cylinder{'' if i == 0 else '.' + str(i)}", ''
                     )[line_number],
                     gas_valve=growth_run_file.get(
-                        f"Gas Valve{'' if i == 0 else '.' + str(i)}", ""
+                        f"Gas Valve{'' if i == 0 else '.' + str(i)}", ''
                     )[line_number],
                     material=[
                         PureSubstanceComponent(
                             substance_name=growth_run_file.get(
                                 f"Gas Cylinder Material{'' if i == 0 else '.' + str(i)}",
-                                "",
+                                '',
                             )[line_number],
                             pure_substance=PureSubstanceSection(
                                 name=growth_run_file.get(
                                     f"Gas Cylinder Material{'' if i == 0 else '.' + str(i)}",
-                                    "",
+                                    '',
                                 )[line_number]
                             ),
                         ),
@@ -577,18 +577,18 @@ def populate_gas_source(line_number, growth_run_file: pd.DataFrame):
                                     )[line_number]
                                 ]
                             )
-                            * ureg("mbar").to("pascal").magnitude,
+                            * ureg('mbar').to('pascal').magnitude,
                         ),
-                        precursor_partial_pressure=PartialVaporPressure(
-                            set_value=pd.Series(
-                                [
-                                    growth_run_file.get(
-                                        f"Gas Partial Pressure{'' if i == 0 else '.' + str(i)}",
-                                        0,
-                                    )[line_number]
-                                ]
-                            ),
-                        ),
+                        # precursor_partial_pressure=PartialVaporPressure(
+                        #     set_value=pd.Series(
+                        #         [
+                        #             growth_run_file.get(
+                        #                 f"Gas Partial Pressure{'' if i == 0 else '.' + str(i)}",
+                        #                 0,
+                        #             )[line_number]
+                        #         ]
+                        #     ),
+                        # ),
                         total_flow_rate=VolumetricFlowRate(
                             set_value=pd.Series(
                                 [
@@ -635,7 +635,7 @@ def populate_element(line_number, substrates_file: pd.DataFrame):
     """
     elements = []
     elements_quantities = [
-        "Elements",
+        'Elements',
     ]
     i = 0
     while True:
@@ -644,7 +644,7 @@ def populate_element(line_number, substrates_file: pd.DataFrame):
             for key in elements_quantities
         ):
             element = substrates_file.get(
-                f"Elements{'' if i == 0 else '.' + str(i)}", ""
+                f"Elements{'' if i == 0 else '.' + str(i)}", ''
             )[line_number]
             if not pd.isna(element):
                 elements.append(
@@ -664,8 +664,8 @@ def populate_dopant(line_number, substrates_file: pd.DataFrame):
     """
     dopants = []
     dopant_quantities = [
-        "Doping species",
-        "Doping Level",
+        'Doping species',
+        'Doping Level',
     ]
     i = 0
     while True:
@@ -674,10 +674,10 @@ def populate_dopant(line_number, substrates_file: pd.DataFrame):
             for key in dopant_quantities
         ):
             doping_species = substrates_file.get(
-                f"Doping species{'' if i == 0 else '.' + str(i)}", ""
+                f"Doping species{'' if i == 0 else '.' + str(i)}", ''
             )[line_number]
             doping_level = substrates_file.get(
-                f"Doping Level{'' if i == 0 else '.' + str(i)}", ""
+                f"Doping Level{'' if i == 0 else '.' + str(i)}", ''
             )[line_number]
             if not pd.isna(doping_species):
                 dopants.append(

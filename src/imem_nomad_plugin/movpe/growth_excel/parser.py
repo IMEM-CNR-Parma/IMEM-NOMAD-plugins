@@ -32,6 +32,7 @@ from nomad.datamodel.datamodel import EntryArchive, EntryMetadata
 from nomad.datamodel.metainfo.basesections import (
     SystemComponent,
     PubChemPureSubstanceSection,
+    CompositeSystemReference,
 )
 
 from nomad_material_processing import (
@@ -48,6 +49,11 @@ from nomad_material_processing.vapor_deposition.cvd import Rotation
 
 from imem_nomad_plugin.general.schema import (
     SampleCutIMEM,
+)
+
+from imem_nomad_plugin.characterization.schema import (
+    AFMmeasurement,
+    AFMresults,
 )
 
 from imem_nomad_plugin.movpe.schema import (
@@ -71,6 +77,9 @@ from imem_nomad_plugin.movpe.schema import (
     Shape,
     SampleParametersMovpe,
     FilamentTemperature,
+    XRDmeasurementReference,
+    AFMmeasurementReference,
+    CharacterizationMovpeIMEM,
 )
 
 from imem_nomad_plugin.utils import (
@@ -112,45 +121,50 @@ class ParserMovpeIMEM(MatchingParser):
         # sheet = pd.read_excel(xlsx, 'Overview', comment='#', converters={'Sample': str})
         # overview_sheet = sheet.rename(columns=lambda x: x.strip())
 
-        overview_sheet = pd.read_excel(
-            xlsx, 'Overview', comment='#', converters={'Sample': str}
-        )
-        overview_sheet.columns = overview_sheet.columns.str.strip()
-
-        substrates_sheet = pd.read_excel(
-            xlsx,
-            'Substrate',
-            comment='#',
-            converters={'Orientation': str, 'Off-cut Orientation': str},
-        )
-        substrates_sheet.columns = substrates_sheet.columns.str.strip()
-
-        growthrun_sheet = pd.read_excel(xlsx, 'GrowthRun', comment='#')
-        growthrun_sheet.columns = growthrun_sheet.columns.str.strip()
-
-        precursors_sheet = pd.read_excel(xlsx, 'Precursors', comment='#')
-        precursors_sheet.columns = precursors_sheet.columns.str.strip()
-
-        mist_sheet = pd.read_excel(xlsx, 'Mist', comment='#')
-        mist_sheet.columns = mist_sheet.columns.str.strip()
-
-        pregrowth_sheet = pd.read_excel(xlsx, 'Pregrowth', comment='#')
-        pregrowth_sheet.columns = pregrowth_sheet.columns.str.strip()
-
-        samplecut_sheet = pd.read_excel(xlsx, 'SampleCut', comment='#')
-        samplecut_sheet.columns = samplecut_sheet.columns.str.strip()
-
-        hrxrd_sheet = pd.read_excel(xlsx, 'HRXRD', comment='#')
-        hrxrd_sheet.columns = hrxrd_sheet.columns.str.strip()
-
-        characterization_sheet = pd.read_excel(xlsx, 'AFMReflectanceSEM', comment='#')
-        characterization_sheet.columns = characterization_sheet.columns.str.strip()
-
-        electro_optical_sheet = pd.read_excel(xlsx, 'ElectroOptical', comment='#')
-        electro_optical_sheet.columns = electro_optical_sheet.columns.str.strip()
-
-        contacts_sheet = pd.read_excel(xlsx, 'Contacts', comment='#')
-        contacts_sheet.columns = contacts_sheet.columns.str.strip()
+        if 'Overview' in xlsx.sheet_names:
+            overview_sheet = pd.read_excel(
+                xlsx, 'Overview', comment='#', converters={'Sample': str}
+            )
+            overview_sheet.columns = overview_sheet.columns.str.strip()
+        if 'Substrate' in xlsx.sheet_names:
+            substrates_sheet = pd.read_excel(
+                xlsx,
+                'Substrate',
+                comment='#',
+                converters={'Orientation': str, 'Off-cut Orientation': str},
+            )
+            substrates_sheet.columns = substrates_sheet.columns.str.strip()
+        if 'GrowthRun' in xlsx.sheet_names:
+            growthrun_sheet = pd.read_excel(xlsx, 'GrowthRun', comment='#')
+            growthrun_sheet.columns = growthrun_sheet.columns.str.strip()
+        if 'Precursors' in xlsx.sheet_names:
+            precursors_sheet = pd.read_excel(xlsx, 'Precursors', comment='#')
+            precursors_sheet.columns = precursors_sheet.columns.str.strip()
+        if 'Mist' in xlsx.sheet_names:
+            mist_sheet = pd.read_excel(xlsx, 'Mist', comment='#')
+            mist_sheet.columns = mist_sheet.columns.str.strip()
+        if 'Pregrowth' in xlsx.sheet_names:
+            pregrowth_sheet = pd.read_excel(xlsx, 'Pregrowth', comment='#')
+            pregrowth_sheet.columns = pregrowth_sheet.columns.str.strip()
+        if 'SampleCut' in xlsx.sheet_names:
+            samplecut_sheet = pd.read_excel(xlsx, 'SampleCut', comment='#')
+            samplecut_sheet.columns = samplecut_sheet.columns.str.strip()
+        if 'HRXRD' in xlsx.sheet_names:
+            hrxrd_sheet = pd.read_excel(
+                xlsx, 'HRXRD', converters={'Sample': str}, comment='#'
+            )
+            hrxrd_sheet.columns = hrxrd_sheet.columns.str.strip()
+        if 'AFMReflectanceSEM' in xlsx.sheet_names:
+            characterization_sheet = pd.read_excel(
+                xlsx, 'AFMReflectanceSEM', converters={'Sample': str}, comment='#'
+            )
+            characterization_sheet.columns = characterization_sheet.columns.str.strip()
+        if 'ElectroOptical' in xlsx.sheet_names:
+            electro_optical_sheet = pd.read_excel(xlsx, 'ElectroOptical', comment='#')
+            electro_optical_sheet.columns = electro_optical_sheet.columns.str.strip()
+        if 'Contacts' in xlsx.sheet_names:
+            contacts_sheet = pd.read_excel(xlsx, 'Contacts', comment='#')
+            contacts_sheet.columns = contacts_sheet.columns.str.strip()
 
         sample_id = overview_sheet['Sample'][0]
 
@@ -659,6 +673,136 @@ class ParserMovpeIMEM(MatchingParser):
         #         )
         #     )
 
+        # creating AFM archive
+        afm_measurements = []
+        for index, row in characterization_sheet.iterrows():
+            afm_data = AFMmeasurement(
+                name=str(
+                    row['Sample']
+                    if 'Sample' in characterization_sheet.columns and row['Sample']
+                    else None
+                )
+                + f' afm {index}',
+                datetime=(
+                    row['Date']
+                    if 'Date' in characterization_sheet.columns and row['Date']
+                    else None
+                ),
+                samples=[
+                    CompositeSystemReference(
+                        lab_id=str(
+                            row['Sample']
+                            if 'Sample' in hrxrd_sheet.columns and row['Sample']
+                            else characterization_sheet
+                        ),
+                    )
+                ],
+                results=[
+                    AFMresults(
+                        name=(
+                            row['Notes']
+                            if 'Notes' in characterization_sheet.columns
+                            and row['Notes']
+                            else None
+                        ),
+                        roughness=(
+                            row['Roughness']
+                            if 'Roughness' in characterization_sheet.columns
+                            and row['Roughness']
+                            else None
+                        ),
+                        surface_features=(
+                            row['Surface Features']
+                            if 'Surface Features' in characterization_sheet.columns
+                            and row['Surface Features']
+                            else None
+                        ),
+                    )
+                ],
+            )
+            afm_filename = f'{row["Sample"]}.AFMmeasurement.archive.{filetype}'
+            afm_archive = EntryArchive(
+                data=afm_data,
+                m_context=archive.m_context,
+                metadata=EntryMetadata(upload_id=archive.m_context.upload_id),
+            )
+            create_archive(
+                afm_archive.m_to_dict(),
+                archive.m_context,
+                afm_filename,
+                filetype,
+                logger,
+            )
+            afm_measurements.append(
+                AFMmeasurementReference(
+                    name=str(
+                        row['Sample']
+                        if 'Sample' in hrxrd_sheet.columns and row['Sample']
+                        else None
+                    )
+                    + f' afm {index}',
+                    reference=f'../uploads/{archive.m_context.upload_id}/archive/{hash(archive.m_context.upload_id, afm_filename)}#data',
+                )
+            )
+
+        # creating XRD object(s)
+        xrd_measurements = []
+        for index, row in hrxrd_sheet.iterrows():
+            xrd_measurements.append(
+                XRDmeasurementReference(
+                    name=str(
+                        row['Sample']
+                        if 'Sample' in hrxrd_sheet.columns and row['Sample']
+                        else None
+                    )
+                    + f' afm {index}',
+                    sample_id=(
+                        row['Sample']
+                        if 'Sample' in hrxrd_sheet.columns and row['Sample']
+                        else None
+                    ),
+                    phase=(
+                        row['Phase']
+                        if 'Phase' in hrxrd_sheet.columns and row['Phase']
+                        else None
+                    ),
+                    peak_position_2theta=(
+                        row['Peak Position - 2theta']
+                        if 'Peak Position - 2theta' in hrxrd_sheet.columns
+                        and row['Peak Position - 2theta']
+                        else None
+                    ),
+                    peak_fwhm_2theta=(
+                        row['Peak FWHM - 2theta']
+                        if 'Peak FWHM - 2theta' in hrxrd_sheet.columns
+                        and row['Peak FWHM - 2theta']
+                        else None
+                    ),
+                    peak_position_omega=(
+                        row['Peak Position - Omega']
+                        if 'Peak Position - Omega' in hrxrd_sheet.columns
+                        and row['Peak Position - Omega']
+                        else None
+                    ),
+                    peak_fwhm_rocking_curve=(
+                        row['Peak FWHM Rocking Curve']
+                        if 'Peak FWHM Rocking Curve' in hrxrd_sheet.columns
+                        and row['Peak FWHM Rocking Curve']
+                        else None
+                    ),
+                    reflection=(
+                        row['Reflection']
+                        if 'Reflection' in hrxrd_sheet.columns and row['Reflection']
+                        else None
+                    ),
+                    description=(
+                        row['Notes']
+                        if 'Notes' in hrxrd_sheet.columns and row['Notes']
+                        else None
+                    ),
+                )
+            )
+
         # creating experiment archive
         experiment_filename = f'{sample_id}.ExperimentMovpeIMEM.archive.{filetype}'
         experiment_data = ExperimentMovpeIMEM(
@@ -672,6 +816,10 @@ class ParserMovpeIMEM(MatchingParser):
             ),
             sample_cut=SampleCutIMEMReference(
                 reference=f'../uploads/{archive.m_context.upload_id}/archive/{hash(archive.m_context.upload_id, samplecut_filename)}#data',
+            ),
+            characterization=CharacterizationMovpeIMEM(
+                xrd=xrd_measurements,
+                afm=afm_measurements,
             ),
         )
         experiment_archive = EntryArchive(
