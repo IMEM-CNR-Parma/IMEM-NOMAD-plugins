@@ -70,7 +70,6 @@ from imem_nomad_plugin.movpe.schema import (
     GasFlowMovpe,
     ShaftTemperature,
     FilamentTemperature,
-    LayTecTemperature,
     SubstrateMovpe,
     SubstrateCrystalPropertiesMovpe,
     MiscutMovpe,

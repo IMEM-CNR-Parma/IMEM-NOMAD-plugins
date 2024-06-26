@@ -94,8 +94,6 @@ from nomad_measurements.xrd import ELNXRayDiffraction
 
 from nomad.config import config
 
-from lakeshore_plugin.hall.schema import HallMeasurement
-
 from imem_nomad_plugin.utils import (
     create_archive,
 )
@@ -652,7 +650,7 @@ class HallMeasurementReference(SectionReference):
     """
 
     reference = Quantity(
-        type=HallMeasurement,
+        type=ArchiveSection,
         description='A reference to a NOMAD `HallMeasurement` entry.',
         a_eln=ELNAnnotation(
             component='ReferenceEditQuantity',
