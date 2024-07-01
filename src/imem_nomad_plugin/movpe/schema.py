@@ -98,6 +98,7 @@ from lakeshore_nomad_plugin.hall.schema import HallMeasurement
 
 from imem_nomad_plugin.utils import (
     create_archive,
+    handle_section,
 )
 from imem_nomad_plugin.general.schema import (
     IMEMMOVPECategory,
@@ -115,31 +116,6 @@ from nomad.metainfo import (
 configuration = config.get_plugin_entry_point('imem_nomad_plugin.movpe:movpe_schema')
 
 m_package = SchemaPackage()
-
-
-def is_activity_section(section):
-    return any('Activity' in i.label for i in section.m_def.all_base_sections)
-
-
-def handle_section(section):
-    if hasattr(section, 'reference') and is_activity_section(section.reference):
-        return [ExperimentStep(activity=section.reference, name=section.reference.name)]
-    if section.m_def.label == 'CharacterizationMovpeIMEM':
-        sub_sect_list = []
-        for sub_section in vars(section).values():
-            if isinstance(sub_section, list):
-                for item in sub_section:
-                    if hasattr(item, 'reference') and is_activity_section(
-                        item.reference
-                    ):
-                        sub_sect_list.append(
-                            ExperimentStep(
-                                activity=item.reference, name=item.reference.name
-                            )
-                        )
-        return sub_sect_list
-    if not hasattr(section, 'reference') and is_activity_section(section):
-        return [ExperimentStep(activity=section, name=section.name)]
 
 
 class Shape(Parallelepiped):

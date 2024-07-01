@@ -37,6 +37,7 @@ from nomad.datamodel.metainfo.basesections import (
     ElementalComposition,
     PureSubstanceComponent,
     PureSubstanceSection,
+    ExperimentStep,
 )
 
 from nomad_material_processing import Dopant, SubstrateReference
@@ -690,3 +691,28 @@ def populate_dopant(line_number, substrates_file: pd.DataFrame):
         else:
             break
     return dopants
+
+
+def is_activity_section(section):
+    return any('Activity' in i.label for i in section.m_def.all_base_sections)
+
+
+def handle_section(section):
+    if hasattr(section, 'reference') and is_activity_section(section.reference):
+        return [ExperimentStep(activity=section.reference, name=section.reference.name)]
+    if section.m_def.label == 'CharacterizationMovpeIMEM':
+        sub_sect_list = []
+        for sub_section in vars(section).values():
+            if isinstance(sub_section, list):
+                for item in sub_section:
+                    if hasattr(item, 'reference') and is_activity_section(
+                        item.reference
+                    ):
+                        sub_sect_list.append(
+                            ExperimentStep(
+                                activity=item.reference, name=item.reference.name
+                            )
+                        )
+        return sub_sect_list
+    if not hasattr(section, 'reference') and is_activity_section(section):
+        return [ExperimentStep(activity=section, name=section.name)]
