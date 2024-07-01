@@ -94,6 +94,8 @@ from nomad_measurements.xrd import ELNXRayDiffraction
 
 from nomad.config import config
 
+from lakeshore_nomad_plugin.hall.schema import HallMeasurement
+
 from imem_nomad_plugin.utils import (
     create_archive,
 )
