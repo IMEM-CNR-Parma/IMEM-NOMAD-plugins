@@ -86,7 +86,7 @@ from imem_nomad_plugin.utils import (
     fetch_substrate,
     populate_sources,
     populate_gas_source,
-    typed_df_value,
+    fill_quantity,
     populate_element,
     populate_dopant,
 )
@@ -165,7 +165,7 @@ class ParserMovpeIMEM(MatchingParser):
             contacts_sheet = pd.read_excel(xlsx, 'Contacts', comment='#')
             contacts_sheet.columns = contacts_sheet.columns.str.strip()
 
-        sample_id = overview_sheet['Sample'][0]
+        sample_id = fill_quantity(overview_sheet, 'Sample', 0)
 
         # creating Substrate archives
         for substrate_index, substrate_id in enumerate(substrates_sheet['Substrates']):
@@ -175,47 +175,44 @@ class ParserMovpeIMEM(MatchingParser):
             )
             substrate_data = SubstrateMovpe(
                 lab_id=substrate_id,
-                supplier_id=typed_df_value(
-                    substrates_sheet, 'Substrate ID', str, substrate_index
+                supplier_id=fill_quantity(
+                    substrates_sheet, 'Substrate ID', substrate_index
                 ),
-                supplier=(
-                    typed_df_value(substrates_sheet, 'Supplier', str, substrate_index)
-                ),
-                name=typed_df_value(substrates_sheet, 'Material', str, substrate_index),
-                description=f"Description: {typed_df_value(substrates_sheet, 'Description', str, substrate_index)}, Notes: {typed_df_value(substrates_sheet, 'Notes', str, substrate_index)}",
+                supplier=fill_quantity(substrates_sheet, 'Supplier', substrate_index),
+                name=fill_quantity(substrates_sheet, 'Material', substrate_index),
+                description=f"Description: {fill_quantity(substrates_sheet, 'Description', substrate_index)}, Notes: {fill_quantity(substrates_sheet, 'Notes', substrate_index)}",
                 geometry=Shape(
-                    width=typed_df_value(
-                        substrates_sheet, 'Size X', float, substrate_index
-                    )
-                    * ureg('millimeter').to('meter').magnitude,
-                    length=typed_df_value(
-                        substrates_sheet, 'Size Y', float, substrate_index
-                    )
-                    * ureg('millimeter').to('meter').magnitude,
-                    diameter=typed_df_value(
-                        substrates_sheet, 'Size Diameter', float, substrate_index
-                    )
-                    * ureg('millimeter').to('meter').magnitude,
+                    width=fill_quantity(
+                        substrates_sheet,
+                        'Size X',
+                        substrate_index,
+                        read_unit='millimeter',
+                    ),
+                    length=fill_quantity(
+                        substrates_sheet,
+                        'Size Y',
+                        substrate_index,
+                        read_unit='millimeter',
+                    ),
+                    diameter=fill_quantity(
+                        substrates_sheet,
+                        'Size Diameter',
+                        substrate_index,
+                        read_unit='millimeter',
+                    ),
                 ),
                 crystal_properties=SubstrateCrystalPropertiesMovpe(
                     orientation=(
-                        typed_df_value(
-                            substrates_sheet, 'Orientation', str, substrate_index
-                        )
+                        fill_quantity(substrates_sheet, 'Orientation', substrate_index)
                     ),
                     miscut=MiscutMovpe(
-                        angle=(
-                            typed_df_value(
-                                substrates_sheet, 'Off-cut', float, substrate_index
-                            )
+                        angle=fill_quantity(
+                            substrates_sheet, 'Off-cut', substrate_index
                         ),
-                        orientation=(
-                            typed_df_value(
-                                substrates_sheet,
-                                'Off-cut Orientation',
-                                str,
-                                substrate_index,
-                            )
+                        orientation=fill_quantity(
+                            substrates_sheet,
+                            'Off-cut Orientation',
+                            substrate_index,
                         ),
                     ),
                 ),
@@ -223,15 +220,9 @@ class ParserMovpeIMEM(MatchingParser):
                     substrate_index, substrates_sheet
                 ),
                 dopants=populate_dopant(substrate_index, substrates_sheet),
-                annealing=typed_df_value(
-                    substrates_sheet, 'Annealing', str, substrate_index
-                ),
-                cleaning=typed_df_value(
-                    substrates_sheet, 'Cleaning', str, substrate_index
-                ),
-                regrowth=typed_df_value(
-                    substrates_sheet, 'Regrowth', str, substrate_index
-                ),
+                annealing=fill_quantity(substrates_sheet, 'Annealing', substrate_index),
+                cleaning=fill_quantity(substrates_sheet, 'Cleaning', substrate_index),
+                regrowth=fill_quantity(substrates_sheet, 'Regrowth', substrate_index),
             )
 
             substrate_archive = EntryArchive(
@@ -249,6 +240,7 @@ class ParserMovpeIMEM(MatchingParser):
 
         # generate substrate references
         substrate_id = substrates_sheet['Substrates'][0]
+        ### TODO try to get rid of the fetch_substarte as it slows down the processing
         sleep(1.5)
         substrate_ref = fetch_substrate(archive, sample_id, substrate_id, logger)
         sub_ref = None
@@ -307,7 +299,9 @@ class ParserMovpeIMEM(MatchingParser):
             ),
         )
         for _, row in samplecut_sheet.iterrows():
-            children_sample_id = row['Children Sample ID']
+            children_sample_id = (
+                f"{sample_id} {fill_quantity(row, 'Children Sample ID')}"
+            )
             children_sample_data = ThinFilmStackMovpeIMEM(
                 name=str(children_sample_id) + ' stack',
                 lab_id=str(children_sample_id),
@@ -360,97 +354,63 @@ class ParserMovpeIMEM(MatchingParser):
         for step_index, step in growthrun_sheet.iterrows():
             process_steps_lists.append(
                 GrowthStepMovpeIMEM(
-                    name=(step['Name'] if 'Name' in growthrun_sheet.columns else None),
+                    name=fill_quantity(step, 'Name'),
                     step_index=step_index + 1,
-                    duration=(
-                        step['Duration']
-                        if 'Duration' in growthrun_sheet.columns
-                        and not pd.isna(step['Duration'])
-                        else 0 * ureg('minute').to('second').magnitude
-                    ),
-                    comment=(
-                        step['Notes'] if 'Notes' in growthrun_sheet.columns else None
-                    ),
+                    duration=fill_quantity(step, 'Duration', read_unit='minute'),
+                    comment=fill_quantity(step, 'Notes'),
                     sources=populate_sources(step_index, growthrun_sheet)
                     + populate_gas_source(step_index, growthrun_sheet),
                     environment=ChamberEnvironmentMovpe(
                         pressure=Pressure(
-                            set_time=(pd.Series([0])),
+                            set_time=pd.Series([0]),
                             set_value=pd.Series(
-                                [
-                                    (
-                                        step['Pressure']
-                                        if 'Pressure' in growthrun_sheet.columns
-                                        else None
-                                    )
-                                ]
-                            )
-                            * ureg('mbar').to('pascal').magnitude,
+                                [fill_quantity(step, 'Pressure', read_unit='mbar')]
+                            ),
                         ),
                         rotation=Rotation(
-                            set_time=(pd.Series([0])),
+                            set_time=pd.Series([0]),
                             set_value=pd.Series(
-                                [
-                                    (
-                                        step['Rotation']
-                                        if 'Rotation' in growthrun_sheet.columns
-                                        else None
-                                    )
-                                ]
-                            )
-                            * ureg('rpm').to('rpm').magnitude,
+                                [fill_quantity(step, 'Rotation', read_unit='rpm')]
+                            ),
                         ),
                         gas_flow=[
                             GasFlowMovpe(
                                 gas=PubChemPureSubstanceSection(
-                                    name=(
-                                        step['Carrier Gas']
-                                        if 'Carrier Gas' in growthrun_sheet.columns
-                                        else None
-                                    ),
+                                    name=fill_quantity(step, 'Carrier Gas'),
                                 ),
                             ),
                         ],
                         uniform_gas_flow_rate=VolumetricFlowRate(
-                            set_time=(pd.Series([0])),
+                            set_time=pd.Series([0]),
                             set_value=pd.Series(
                                 [
-                                    (
-                                        step['Uniform Valve']
-                                        if 'Uniform Valve' in growthrun_sheet.columns
-                                        else None
+                                    fill_quantity(
+                                        step,
+                                        'Uniform Valve',
+                                        read_unit='cm ** 3 / minute',
                                     )
                                 ]
-                            )
-                            * ureg('cm ** 3 / minute')
-                            .to('meter ** 3 / second')
-                            .magnitude,
+                            ),
                         ),
                     ),
                     sample_parameters=[
                         SampleParametersMovpe(
                             filament_temperature=FilamentTemperature(
-                                time=(pd.Series([0])),
-                                value=(
-                                    pd.Series(
-                                        [
-                                            step['Temperature']
-                                            if 'Temperature' in growthrun_sheet.columns
-                                            else None
-                                        ]
-                                    )
-                                    * ureg('celsius').to('kelvin').magnitude
+                                time=pd.Series([0]),
+                                value=pd.Series(
+                                    [
+                                        fill_quantity(
+                                            step, 'Temperature', read_unit='celsius'
+                                        )
+                                    ]
                                 ),
-                                set_time=(pd.Series([0])),
-                                set_value=(
-                                    pd.Series(
-                                        [
-                                            step['Temperature']
-                                            if 'Temperature' in growthrun_sheet.columns
-                                            else None
-                                        ]
-                                    )
-                                    * ureg('celsius').to('kelvin').magnitude
+                                set_time=pd.Series([0]),
+                                set_value=pd.Series(
+                                    [
+                                        fill_quantity(
+                                            step, 'Temperature', read_unit='celsius'
+                                        )
+                                    ]
                                 ),
                             )
                         )
@@ -462,11 +422,15 @@ class ParserMovpeIMEM(MatchingParser):
             growth_process_object = GrowthMovpeIMEM(
                 name='Growth MOVPE',
                 lab_id=sample_id,
-                susceptor=typed_df_value(
-                    substrates_sheet, 'Susceptor', str, substrate_index
-                ),
-                mask=typed_df_value(substrates_sheet, 'Mask', str, substrate_index),
-                pocket=typed_df_value(substrates_sheet, 'Pocket', str, substrate_index),
+                susceptor=fill_quantity(substrates_sheet, 'Susceptor', substrate_index)
+                if fill_quantity(substrates_sheet, 'Susceptor', substrate_index)
+                else '-',
+                mask=fill_quantity(substrates_sheet, 'Mask', substrate_index)
+                if fill_quantity(substrates_sheet, 'Mask', substrate_index)
+                else '-',
+                pocket=fill_quantity(substrates_sheet, 'Pocket', substrate_index)
+                if fill_quantity(substrates_sheet, 'Pocket', substrate_index)
+                else '-',
                 samples=[
                     ThinFilmStackMovpeReference(
                         reference=f'../uploads/{archive.m_context.upload_id}/archive/{hash(archive.m_context.upload_id, grown_sample_filename)}#data'
@@ -497,101 +461,73 @@ class ParserMovpeIMEM(MatchingParser):
         for step_id, step in pregrowth_sheet.iterrows():
             pre_process_steps_lists.append(
                 GrowthStepMovpeIMEM(
-                    name=(
-                        step['Step Name']
-                        if 'Step Name' in pregrowth_sheet.columns
-                        else None
-                    ),
+                    name=fill_quantity(step, 'Step Name'),
                     step_index=step_id + 1,
-                    duration=(
-                        step['Duration']
-                        if 'Duration' in growthrun_sheet.columns
-                        and not pd.isna(step['Duration'])
-                        else 0 * ureg('minute').to('second').magnitude
-                    ),
-                    comment=f"Description: {typed_df_value(substrates_sheet, 'Description', str, substrate_index)}, Notes: {typed_df_value(substrates_sheet, 'Notes', str, substrate_index)}"
-                    if 'Notes' and 'Description' in pregrowth_sheet.columns
-                    else None,
+                    duration=fill_quantity(step, 'Duration', read_unit='minute'),
+                    comment=f"Description: {fill_quantity(substrates_sheet, 'Description', substrate_index)}, Notes: {fill_quantity(substrates_sheet, 'Notes', substrate_index)}",
                     environment=ChamberEnvironmentMovpe(
-                        pressure=Pressure(
-                            set_time=(pd.Series([0])),
-                            set_value=pd.Series(
-                                [
-                                    (
-                                        step['Chamber Pressure']
-                                        if 'Chamber Pressure' in pregrowth_sheet.columns
-                                        else None
-                                    )
-                                ]
-                            )
-                            * ureg('mbar').to('pascal').magnitude,
-                        ),
+                        # pressure=Pressure(
+                        #     set_time=pd.Series([0]),
+                        #     set_value=pd.Series(
+                        #         [
+                        #             fill_quantity(
+                        #                 step, 'Chamber Pressure', read_unit='mbar'
+                        #             )
+                        #         ]
+                        #     ),
+                        # ),
                         rotation=Rotation(
-                            set_time=(pd.Series([0])),
+                            set_time=pd.Series([0]),
                             set_value=pd.Series(
                                 [
-                                    (
-                                        step['Carrier Rotation']
-                                        if 'Carrier Rotation' in pregrowth_sheet.columns
-                                        else None
+                                    fill_quantity(
+                                        step, 'Carrier Rotation', read_unit='rpm'
                                     )
                                 ]
-                            )
-                            * ureg('rpm').to('rpm').magnitude,
+                            ),
                         ),
                         gas_flow=[
                             GasFlowMovpe(
                                 gas=PubChemPureSubstanceSection(
-                                    name=(
-                                        step['Carrier Gas']
-                                        if 'Carrier Gas' in pregrowth_sheet.columns
-                                        else None
-                                    ),
+                                    name=fill_quantity(step, 'Carrier Gas'),
                                 ),
                             ),
                         ],
                         uniform_gas_flow_rate=VolumetricFlowRate(
-                            set_time=(pd.Series([0])),
+                            set_time=pd.Series([0]),
                             set_value=pd.Series(
                                 [
-                                    (
-                                        step['Carrier Gas Flow']
-                                        if 'Carrier Gas Flow' in pregrowth_sheet.columns
-                                        else None
+                                    fill_quantity(
+                                        step,
+                                        'Carrier Gas Flow',
+                                        read_unit='cm ** 3 / minute',
                                     )
                                 ]
-                            )
-                            * ureg('cm ** 3 / minute')
-                            .to('meter ** 3 / second')
-                            .magnitude,
+                            ),
                         ),
                     ),
                     sample_parameters=[
                         SampleParametersMovpe(
                             filament_temperature=FilamentTemperature(
-                                time=(pd.Series([0])),
-                                value=(
-                                    pd.Series(
-                                        [
-                                            step['Substrate Temperature']
-                                            if 'Substrate Temperature'
-                                            in pregrowth_sheet.columns
-                                            else None
-                                        ]
-                                    )
-                                    * ureg('celsius').to('kelvin').magnitude
+                                time=pd.Series([0]),
+                                value=pd.Series(
+                                    [
+                                        fill_quantity(
+                                            step,
+                                            'Substrate Temperature',
+                                            read_unit='celsius',
+                                        )
+                                    ]
                                 ),
-                                set_time=(pd.Series([0])),
-                                set_value=(
-                                    pd.Series(
-                                        [
-                                            step['Substrate Temperature']
-                                            if 'Substrate Temperature'
-                                            in pregrowth_sheet.columns
-                                            else None
-                                        ]
-                                    )
-                                    * ureg('celsius').to('kelvin').magnitude
+                                set_time=pd.Series([0]),
+                                set_value=pd.Series(
+                                    [
+                                        fill_quantity(
+                                            step,
+                                            'Substrate Temperature',
+                                            read_unit='celsius',
+                                        )
+                                    ]
                                 ),
                             )
                         )
@@ -603,11 +539,9 @@ class ParserMovpeIMEM(MatchingParser):
         pregrowth_process_object = GrowthMovpeIMEM(
             name='Pregrowth MOVPE',
             lab_id=sample_id,
-            susceptor=typed_df_value(
-                substrates_sheet, 'Susceptor', str, substrate_index
-            ),
-            mask=typed_df_value(substrates_sheet, 'Mask', str, substrate_index),
-            pocket=typed_df_value(substrates_sheet, 'Pocket', str, substrate_index),
+            susceptor=fill_quantity(substrates_sheet, 'Susceptor', substrate_index),
+            mask=fill_quantity(substrates_sheet, 'Mask', substrate_index),
+            pocket=fill_quantity(substrates_sheet, 'Pocket', substrate_index),
         )
         pregrowth_process_object.steps = pre_process_steps_lists
 
@@ -676,50 +610,24 @@ class ParserMovpeIMEM(MatchingParser):
         afm_measurements = []
         for index, row in characterization_sheet.iterrows():
             afm_data = AFMmeasurement(
-                name=str(
-                    row['Sample']
-                    if 'Sample' in characterization_sheet.columns and row['Sample']
-                    else None
-                )
-                + f' afm {index}',
-                datetime=(
-                    row['Date']
-                    if 'Date' in characterization_sheet.columns and row['Date']
-                    else None
-                ),
+                name=str(fill_quantity(row, 'Sample')) + f' afm {index}',
+                datetime=fill_quantity(row, 'Date'),
                 samples=[
                     CompositeSystemReference(
-                        lab_id=str(
-                            row['Sample']
-                            if 'Sample' in hrxrd_sheet.columns and row['Sample']
-                            else characterization_sheet
-                        ),
+                        lab_id=str(fill_quantity(row, 'Sample')),
                     )
                 ],
                 results=[
                     AFMresults(
-                        name=(
-                            row['Notes']
-                            if 'Notes' in characterization_sheet.columns
-                            and row['Notes']
-                            else None
-                        ),
-                        roughness=(
-                            row['Roughness']
-                            if 'Roughness' in characterization_sheet.columns
-                            and row['Roughness']
-                            else None
-                        ),
-                        surface_features=(
-                            row['Surface Features']
-                            if 'Surface Features' in characterization_sheet.columns
-                            and row['Surface Features']
-                            else None
-                        ),
+                        name=fill_quantity(row, 'Notes'),
+                        roughness=fill_quantity(row, 'Roughness'),
+                        surface_features=fill_quantity(row, 'Surface Features'),
                     )
                 ],
             )
-            afm_filename = f'{row["Sample"]}.AFMmeasurement.archive.{filetype}'
+            afm_filename = (
+                f'{fill_quantity(row,"Sample")}.AFMmeasurement.archive.{filetype}'
+            )
             afm_archive = EntryArchive(
                 data=afm_data,
                 m_context=archive.m_context,
@@ -734,12 +642,7 @@ class ParserMovpeIMEM(MatchingParser):
             )
             afm_measurements.append(
                 AFMmeasurementReference(
-                    name=str(
-                        row['Sample']
-                        if 'Sample' in hrxrd_sheet.columns and row['Sample']
-                        else None
-                    )
-                    + f' afm {index}',
+                    name=fill_quantity(row, 'Sample') + f' afm {index}',
                     reference=f'../uploads/{archive.m_context.upload_id}/archive/{hash(archive.m_context.upload_id, afm_filename)}#data',
                 )
             )
@@ -749,56 +652,17 @@ class ParserMovpeIMEM(MatchingParser):
         for index, row in hrxrd_sheet.iterrows():
             xrd_measurements.append(
                 XRDmeasurementReference(
-                    name=str(
-                        row['Sample']
-                        if 'Sample' in hrxrd_sheet.columns and row['Sample']
-                        else None
-                    )
-                    + f' afm {index}',
-                    sample_id=(
-                        row['Sample']
-                        if 'Sample' in hrxrd_sheet.columns and row['Sample']
-                        else None
+                    name=fill_quantity(row, 'Sample') + f' xrd {index}',
+                    sample_id=fill_quantity(row, 'Sample') + f' xrd {index}',
+                    phase=fill_quantity(row, 'Phase') + f' xrd {index}',
+                    peak_position_2theta=fill_quantity(row, 'Peak Position - 2theta'),
+                    peak_fwhm_2theta=fill_quantity(row, 'Peak FWHM - 2theta'),
+                    peak_position_omega=fill_quantity(row, 'Peak Position - Omega'),
+                    peak_fwhm_rocking_curve=fill_quantity(
+                        row, 'Peak FWHM Rocking Curve'
                     ),
-                    phase=(
-                        row['Phase']
-                        if 'Phase' in hrxrd_sheet.columns and row['Phase']
-                        else None
-                    ),
-                    peak_position_2theta=(
-                        row['Peak Position - 2theta']
-                        if 'Peak Position - 2theta' in hrxrd_sheet.columns
-                        and row['Peak Position - 2theta']
-                        else None
-                    ),
-                    peak_fwhm_2theta=(
-                        row['Peak FWHM - 2theta']
-                        if 'Peak FWHM - 2theta' in hrxrd_sheet.columns
-                        and row['Peak FWHM - 2theta']
-                        else None
-                    ),
-                    peak_position_omega=(
-                        row['Peak Position - Omega']
-                        if 'Peak Position - Omega' in hrxrd_sheet.columns
-                        and row['Peak Position - Omega']
-                        else None
-                    ),
-                    peak_fwhm_rocking_curve=(
-                        row['Peak FWHM Rocking Curve']
-                        if 'Peak FWHM Rocking Curve' in hrxrd_sheet.columns
-                        and row['Peak FWHM Rocking Curve']
-                        else None
-                    ),
-                    reflection=(
-                        row['Reflection']
-                        if 'Reflection' in hrxrd_sheet.columns and row['Reflection']
-                        else None
-                    ),
-                    description=(
-                        row['Notes']
-                        if 'Notes' in hrxrd_sheet.columns and row['Notes']
-                        else None
-                    ),
+                    reflection=fill_quantity(row, 'Reflection'),
+                    description=fill_quantity(row, 'Notes'),
                 )
             )
 

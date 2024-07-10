@@ -23,6 +23,7 @@ from typing import Dict, List
 import yaml
 import json
 import math
+import numpy as np
 
 from nomad.datamodel.context import ClientContext
 from nomad.datamodel import EntryArchive
@@ -169,24 +170,44 @@ def create_archive(
 #         )
 
 
-def df_value(dataframe, column_header, index=None):
+def fill_quantity(dataframe, column_header, index=None, read_unit=None):
     """
     Fetches a value from a DataFrame.
     """
-    if column_header in dataframe.columns:
-        if index is not None:
-            return dataframe[column_header][index]
-        return dataframe[column_header]
-    return None
-
-
-def typed_df_value(dataframe, column_header, value_type, index=None):
-    """
-    Fetches a value of a specified type from a DataFrame.
-    """
-    value = df_value(dataframe, column_header, index)
-    if value_type is str:
-        return str(value)
+    # try:
+    #     if index is not None:
+    #         value = (
+    #             np.float64(dataframe[column_header][index])
+    #             if column_header in dataframe
+    #             and not pd.isna(dataframe[column_header][index])
+    #             else None
+    #         )
+    #     else:
+    #         value = (
+    #             np.float64(dataframe[column_header])
+    #             if column_header in dataframe and not pd.isna(dataframe[column_header])
+    #             else None
+    #         )
+    # except ValueError:
+    if index is not None:
+        value = (
+            dataframe[column_header][index]
+            if column_header in dataframe
+            and not pd.isna(dataframe[column_header][index])
+            else None
+        )
+    else:
+        value = (
+            dataframe[column_header]
+            if column_header in dataframe and not pd.isna(dataframe[column_header])
+            else None
+        )
+    if read_unit is not None:
+        return (
+            value * ureg(read_unit).to_base_units().magnitude
+            if not pd.isna(value)
+            else None
+        )
     else:
         return value
 
