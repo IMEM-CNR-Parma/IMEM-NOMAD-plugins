@@ -170,46 +170,66 @@ def create_archive(
 #         )
 
 
-def fill_quantity(dataframe, column_header, index=None, read_unit=None):
+def fill_quantity(dataframe, column_header, read_unit=None):
     """
-    Fetches a value from a DataFrame.
+    Fetches a value from a DataFrame and optionally converts it to a specified unit.
     """
-    # try:
-    #     if index is not None:
+    try:
+        value = (
+            dataframe[column_header] if not pd.isna(dataframe[column_header]) else None
+        )
+    except (KeyError, IndexError):
+        value = None
+
+    if read_unit is not None:
+        try:
+            if value is not None:
+                value *= ureg(read_unit).to_base_units().magnitude
+        except ValueError:
+            if not value.empty():
+                value *= ureg(read_unit).to_base_units().magnitude
+        # except Exception:
+        #     value = None
+
+    return value
+    # # try:
+    # #     if index is not None:
+    # #         value = (
+    # #             np.float64(dataframe[column_header][index])
+    # #             if column_header in dataframe
+    # #             and not pd.isna(dataframe[column_header][index])
+    # #             else None
+    # #         )
+    # #     else:
+    # #         value = (
+    # #             np.float64(dataframe[column_header])
+    # #             if column_header in dataframe and not pd.isna(dataframe[column_header])
+    # #             else None
+    # #         )
+    # # except ValueError:
+    # if index is not None:
+    #     try:
     #         value = (
-    #             np.float64(dataframe[column_header][index])
+    #             dataframe[column_header][index]
     #             if column_header in dataframe
     #             and not pd.isna(dataframe[column_header][index])
     #             else None
     #         )
-    #     else:
-    #         value = (
-    #             np.float64(dataframe[column_header])
-    #             if column_header in dataframe and not pd.isna(dataframe[column_header])
-    #             else None
-    #         )
-    # except ValueError:
-    if index is not None:
-        value = (
-            dataframe[column_header][index]
-            if column_header in dataframe
-            and not pd.isna(dataframe[column_header][index])
-            else None
-        )
-    else:
-        value = (
-            dataframe[column_header]
-            if column_header in dataframe and not pd.isna(dataframe[column_header])
-            else None
-        )
-    if read_unit is not None:
-        return (
-            value * ureg(read_unit).to_base_units().magnitude
-            if not pd.isna(value)
-            else None
-        )
-    else:
-        return value
+    #     except IndexError:
+    #         value = None
+    # else:
+    #     value = (
+    #         dataframe[column_header]
+    #         if column_header in dataframe and not pd.isna(dataframe[column_header])
+    #         else None
+    #     )
+    # if read_unit is not None:
+    #     return (
+    #         value * ureg(read_unit).to_base_units().magnitude
+    #         if not pd.isna(value)
+    #         else None
+    #     )
+    # return value
 
 
 def row_to_array(dataframe: pd.DataFrame, quantity: str, row_index: int) -> pd.Series:
@@ -720,6 +740,7 @@ def is_activity_section(section):
 
 def handle_section(section):
     if hasattr(section, 'reference') and is_activity_section(section.reference):
+        print(f"1 LET'S SEE this {section.rerefence.name}: {section.reference}")
         return [ExperimentStep(activity=section.reference, name=section.reference.name)]
     if section.m_def.label == 'CharacterizationMovpeIMEM':
         sub_sect_list = []
@@ -734,6 +755,8 @@ def handle_section(section):
                                 activity=item.reference, name=item.reference.name
                             )
                         )
+        print(f"2 LET'S SEE this {section.rerefence.name}: {section.reference}")
         return sub_sect_list
     if not hasattr(section, 'reference') and is_activity_section(section):
+        print(f"3 LET'S SEE this {section.rerefence.name}: {section.reference}")
         return [ExperimentStep(activity=section, name=section.name)]
