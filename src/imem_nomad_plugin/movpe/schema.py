@@ -899,7 +899,7 @@ class FlashSourceIMEM(CVDSource):
     )
 
 
-class GasLineIMEM(GasLine):
+class GasCylinderIMEM(GasLine):
     """
     A gas line used in MOVPE
     """
@@ -926,7 +926,7 @@ class GasSourceIMEM(CVDSource):
         ),
     )
     vapor_source = SubSection(
-        section_def=GasLineIMEM,
+        section_def=GasCylinderIMEM,
     )
 
 
@@ -1272,9 +1272,9 @@ class GrowthMovpeIMEM(VaporDeposition, EntryData):
             archive.workflow2.inputs.extend(set(inputs))
 
 
-class GrowthMovpeIMEMReference(ActivityReference):
+class SampleCutIMEMReference(ActivityReference):
     """
-    A section used for referencing a GrowthMovpeIMEM.
+    A section used for referencing a SampleCutIMEM.
     """
 
     m_def = Section(
@@ -1289,7 +1289,7 @@ class GrowthMovpeIMEMReference(ActivityReference):
     )
 
 
-class SampleCutIMEMReference(ActivityReference):
+class GrowthMovpeIMEMReference(ActivityReference):
     """
     A section used for referencing a GrowthMovpeIMEM.
     """

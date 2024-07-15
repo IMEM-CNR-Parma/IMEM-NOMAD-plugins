@@ -29,10 +29,15 @@ from nomad.parsing import MatchingParser
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from nomad.datamodel.data import EntryData
 from nomad.datamodel.datamodel import EntryArchive, EntryMetadata
+
 from nomad.datamodel.metainfo.basesections import (
     SystemComponent,
-    PubChemPureSubstanceSection,
     CompositeSystemReference,
+    PubChemPureSubstanceSection,
+    ElementalComposition,
+    PureSubstanceComponent,
+    PureSubstanceSection,
+    ExperimentStep,
 )
 
 from nomad_material_processing import (
@@ -44,8 +49,17 @@ from nomad_material_processing import (
     Miscut,
     Dopant,
 )
-from nomad_material_processing.vapor_deposition import Pressure, VolumetricFlowRate
-from nomad_material_processing.vapor_deposition.cvd import Rotation
+from nomad_material_processing.vapor_deposition import (
+    Pressure,
+    VolumetricFlowRate,
+    Temperature,
+)
+
+from nomad_material_processing.vapor_deposition.cvd import (
+    PartialVaporPressure,
+    BubblerEvaporator,
+    Rotation,
+)
 
 from imem_nomad_plugin.general.schema import (
     SampleCutIMEM,
@@ -79,17 +93,207 @@ from imem_nomad_plugin.movpe.schema import (
     XRDmeasurementReference,
     AFMmeasurementReference,
     CharacterizationMovpeIMEM,
+    BubblerSourceIMEM,
+    GasSourceIMEM,
+    GasCylinderIMEM,
 )
 
 from imem_nomad_plugin.utils import (
     create_archive,
     fetch_substrate,
-    populate_sources,
-    populate_gas_source,
     fill_quantity,
-    populate_element,
-    populate_dopant,
+    rename_block_cols,
+    clean_col_names,
+    split_list_by_element,
 )
+
+
+def populate_bubblers(growth_step: pd.DataFrame, bub_first_col: str):
+    """
+    Populate dopants from the substrate row.
+
+    The function usage implies that the repeated columns are named
+    through the rename_block_cols function as follows:
+    'Bubbler Material.1', 'Bubbler Temp.1', 'Bubbler Material.2', 'Bubbler Temp.2', ...
+    and not as pandas default:
+    'Bubbler Material', 'Bubbler Temp', 'Bubbler Material.1', 'Bubbler Temp.1', ...
+    """
+    groups = split_list_by_element(growth_step.index, bub_first_col)
+    bubblers = []
+    for columns in groups:
+        if any(bub_first_col in item for item in columns):
+            quantity, sep, index = columns[0].rpartition('.')
+            bubbler_obj = BubblerSourceIMEM()
+            bubbler_obj.material = [PureSubstanceComponent()]
+            bubbler_obj.material[0].pure_substance = PureSubstanceSection()
+            bubbler_obj.vapor_source = BubblerEvaporator()
+            bubbler_obj.vapor_source.temperature = Temperature()
+            bubbler_obj.vapor_source.pressure = Pressure()
+            bubbler_obj.vapor_source.total_flow_rate = VolumetricFlowRate()
+
+            material = fill_quantity(growth_step, f'Bubbler Material{sep}{index}')
+            bubbler_obj.name = material
+            bubbler_obj.material[0].substance_name = material
+            bubbler_obj.material[0].pure_substance.name = material
+            bub_temp = fill_quantity(
+                growth_step, f'Bubbler Temp{sep}{index}', read_unit='celsius'
+            )
+            if bub_temp:
+                bubbler_obj.vapor_source.temperature.set_time = pd.Series([0])
+                bubbler_obj.vapor_source.temperature.set_value = pd.Series(bub_temp)
+
+            bub_press = fill_quantity(
+                growth_step, f'Bubbler Pressure{sep}{index}', read_unit='mbar'
+            )
+            if bub_press:
+                bubbler_obj.vapor_source.pressure.set_time = pd.Series([0])
+                bubbler_obj.vapor_source.pressure.set_value = pd.Series([bub_press])
+
+            bub_flow = fill_quantity(
+                growth_step, f'Bubbler Flow{sep}{index}', read_unit='cm **3 / minute'
+            )
+            if bub_flow:
+                bubbler_obj.vapor_source.total_flow_rate.set_time = pd.Series([0])
+                bubbler_obj.vapor_source.total_flow_rate.set_value = pd.Series(
+                    [bub_flow]
+                )
+
+            bub_dilution = fill_quantity(growth_step, f'Bubbler Dilution{sep}{index}')
+            if bub_dilution:
+                bubbler_obj.vapor_source.dilution = bub_dilution
+
+            bubblers.append(bubbler_obj)
+    return bubblers
+    # precursor_partial_pressure=PartialVaporPressure(
+    #     set_value=pd.Series(
+    #         [
+    #             growth_run_file.get(
+    #                 f"Partial Pressure{'' if i == 0 else '.' + str(i)}",
+    #                 0,
+    #             )[line_number]
+    #         ]
+    #     ),
+    # ),
+    # vapor_molar_flow_rate=MolarFlowRate(
+    #     set_value=pd.Series(
+    #         [
+    #             growth_run_file.get(
+    #                 f"Bubbler Molar Flux{'' if i == 0 else '.' + str(i)}",
+    #                 0,
+    #             )[line_number]
+    #         ]
+    #     )
+    #     * ureg('mol / minute').to('mol / second').magnitude,
+    # ),
+
+
+def populate_cylinder(growth_step: pd.DataFrame, gas_first_col: str):
+    """
+    Populate dopants from the substrate row.
+
+    The function usage implies that the repeated columns are named
+    through the rename_block_cols function as follows:
+    'Gas Cylinder Material.1', 'Cylinder Pressure.1', 'Gas Cylinder Material.2', 'Cylinder Pressure.2', ...
+    and not as pandas default:
+    'Gas Cylinder Material', 'Cylinder Pressure', 'Gas Cylinder Material.1', 'Cylinder Pressure.1', ...
+    """
+    groups = split_list_by_element(growth_step.index, gas_first_col)
+    cylinders = []
+    for columns in groups:
+        if any(gas_first_col in item for item in columns):
+            quantity, sep, index = columns[0].rpartition('.')
+            cylinder_obj = GasSourceIMEM()
+            cylinder_obj.material = [PureSubstanceComponent()]
+            cylinder_obj.material[0].pure_substance = PureSubstanceSection()
+            cylinder_obj.vapor_source = GasCylinderIMEM()
+            cylinder_obj.vapor_source.pressure = Pressure()
+            cylinder_obj.vapor_source.total_flow_rate = VolumetricFlowRate()
+            cylinder_obj.vapor_source.effective_flow_rate = VolumetricFlowRate()
+
+            material = fill_quantity(growth_step, f'Gas Cylinder Material{sep}{index}')
+            cylinder_obj.name = material
+            cylinder_obj.material[0].substance_name = material
+            cylinder_obj.material[0].pure_substance.name = material
+
+            cyl_press = fill_quantity(
+                growth_step, f'Cylinder Pressure{sep}{index}', read_unit='mbar'
+            )
+            if cyl_press:
+                cylinder_obj.vapor_source.pressure.set_time = pd.Series([0])
+                cylinder_obj.vapor_source.pressure.set_value = pd.Series([cyl_press])
+
+            cyl_flow = fill_quantity(
+                growth_step, f'Flow from MFC{sep}{index}', read_unit='cm **3 / minute'
+            )
+            if cyl_flow:
+                cylinder_obj.vapor_source.total_flow_rate.set_time = pd.Series([0])
+                cylinder_obj.vapor_source.total_flow_rate.set_value = pd.Series(
+                    [cyl_flow]
+                )
+
+            effective_flow = fill_quantity(
+                growth_step, f'Effective  Flow{sep}{index}', read_unit='cm **3 / minute'
+            )
+            if effective_flow:
+                cylinder_obj.vapor_source.total_flow_rate.set_time = pd.Series([0])
+                cylinder_obj.vapor_source.total_flow_rate.set_value = pd.Series(
+                    [effective_flow]
+                )
+
+            cylinders.append(cylinder_obj)
+    return cylinders
+
+
+def populate_elements(substrate_row: pd.DataFrame):
+    column = 'Elements'
+    elements = []
+    for columns in substrate_row.index:
+        if column in columns:
+            quantity, sep, index = column.rpartition('.')
+            element_obj = ElementalComposition()
+
+            el = (
+                fill_quantity(substrate_row, f'{columns}{sep}{index}')
+                if f'{columns}{sep}{index}' in columns
+                else fill_quantity(substrate_row, f'{columns}')
+            )
+            if el:
+                element_obj.element = el
+            elements.append(element_obj)
+    return elements
+
+
+def populate_dopants(substrate_row: pd.DataFrame, first_col: str):
+    """
+    Populate dopants from the substrate row.
+
+    The function usage implies that the repeated columns are named
+    through the rename_block_cols function as follows:
+    'Doping species.1', 'Doping Level.1', 'Doping species.2', 'Doping Level.2', ...
+    and not as pandas default:
+    'Doping species', 'Doping Level', 'Doping species.1', 'Doping Level.1', ...
+
+    caveats:
+    - use a loop to iterate over rows (.iterrows()) in the dataframe and call this function on each row
+
+    """
+    groups = split_list_by_element(substrate_row.index, first_col)
+
+    dopants = []
+    for columns in groups:
+        if any(first_col in item for item in columns):
+            quantity, sep, index = columns[0].rpartition('.')
+            dopant_obj = Dopant()
+
+            species = fill_quantity(substrate_row, f'Doping species{sep}{index}')
+            if species:
+                dopant_obj.element = species
+
+            dop_level = fill_quantity(substrate_row, f'Doping Level{sep}{index}')
+            if dop_level:
+                dopant_obj.doping_level = dop_level
+            dopants.append(dopant_obj)
+    return dopants
 
 
 class RawFileGrowthRun(EntryData):
@@ -132,10 +336,54 @@ class ParserMovpeIMEM(MatchingParser):
                 comment='#',
                 converters={'Orientation': str, 'Off-cut Orientation': str},
             )
-            substrates_sheet.columns = substrates_sheet.columns.str.strip()
+            substrate_cols = clean_col_names(substrates_sheet)
+            dopant_quantities = [
+                'Doping species',
+                'Doping Level',
+            ]
+            dopant_first_col = 'Doping Level'
+            substrate_cols = rename_block_cols(
+                substrate_cols, dopant_quantities, dopant_first_col
+            )
+            element_quantities = [
+                'Elements',
+            ]
+            element_first_col = element_quantities[0]
+            substrate_cols = rename_block_cols(
+                substrate_cols, element_quantities, element_first_col
+            )
+            substrates_sheet.columns = substrate_cols
         if 'GrowthRun' in xlsx.sheet_names:
             growthrun_sheet = pd.read_excel(xlsx, 'GrowthRun', comment='#')
-            growthrun_sheet.columns = growthrun_sheet.columns.str.strip()
+            growthrun_cols = clean_col_names(growthrun_sheet)
+            bubbler_cols = [
+                'Bubbler Temp',
+                'Bubbler Pressure',
+                'Partial Pressure',
+                'Bubbler Dilution',
+                'Inject',
+                'Bubbler Flow',
+                'Bubbler Material',
+                'Bubbler Valve',
+            ]
+            bub_first_col = 'Bubbler Material'
+            growthrun_cols = rename_block_cols(
+                growthrun_cols, bubbler_cols, bub_first_col
+            )
+            gas_source_quantities = [
+                'Gas Cylinder Material',
+                'Dilution in Cylinder',
+                'Flow from MFC',
+                'Effective  Flow',
+                'Gas Partial Pressure',
+                'Cylinder Pressure',
+                'Gas Valve',
+            ]
+            gas_first_col = 'Gas Cylinder Material'
+            growthrun_cols = rename_block_cols(
+                growthrun_cols, gas_source_quantities, gas_first_col
+            )
+            growthrun_sheet.columns = growthrun_cols
         if 'Precursors' in xlsx.sheet_names:
             precursors_sheet = pd.read_excel(xlsx, 'Precursors', comment='#')
             precursors_sheet.columns = precursors_sheet.columns.str.strip()
@@ -249,13 +497,9 @@ class ParserMovpeIMEM(MatchingParser):
             if mo:
                 substrate_data.crystal_properties.miscut.orientation = mo
 
-            # TODO check functions populate_element and populate_dopant
-            # and make them compliant to the other parsing
-            substrate_data.elemental_composition = populate_element(
-                substrate_index, substrates_sheet
-            )
+            substrate_data.elemental_composition = populate_elements(substrate_row)
 
-            substrate_data.dopants = populate_dopant(substrate_index, substrates_sheet)
+            substrate_data.dopants = populate_dopants(substrate_row, dopant_first_col)
 
             substrate_archive = EntryArchive(
                 data=substrate_data if substrate_data else SubstrateMovpe(),
@@ -462,9 +706,11 @@ class ParserMovpeIMEM(MatchingParser):
                     [growth_step_sample_parameters_filament_temperature_set_value]
                 )
 
-            growth_step.sources = populate_sources(
-                step_index, growthrun_sheet
-            ) + populate_gas_source(step_index, growthrun_sheet)
+            growth_step.sources = populate_bubblers(
+                step, bub_first_col
+            ) + populate_cylinder(
+                step, gas_first_col
+            )  # + populate_gas_source(step_index, growthrun_sheet)
 
             process_steps_lists.append(growth_step)
 
