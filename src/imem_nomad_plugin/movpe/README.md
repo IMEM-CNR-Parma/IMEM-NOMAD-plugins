@@ -19,7 +19,7 @@ It is derived from the former yaml schema:[AreaA-data_modeling_and_schemas/movpe
 The directory tree:
 
 ```bash
-IKZ_plugin/
+IMEM_plugin/
 ├── src
 │   └── imem_nomad_plugin
 │       ├── __init__.py

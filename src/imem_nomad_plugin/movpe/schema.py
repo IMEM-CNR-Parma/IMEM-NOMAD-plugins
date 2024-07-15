@@ -1058,7 +1058,7 @@ class GrowthStepMovpeIMEM(VaporDepositionStep, PlotSection):
     """
 
     m_def = Section(
-        label='Growth Step Movpe 2',
+        # label='Growth Step Movpe 2',
         a_eln=None,
     )
     # name
@@ -1389,7 +1389,7 @@ class ExperimentMovpeIMEM(Experiment, EntryData):
             try:
                 step_list.extend(handle_section(section))
             except (AttributeError, TypeError, NameError) as e:
-                print(f'An error occurred in section {section}: {e}')
+                print(f'An error occurred in section XXX {section}: {e}')
         self.steps = [step for step in step_list if step is not None]
 
         activity_lists = (
@@ -1401,7 +1401,7 @@ class ExperimentMovpeIMEM(Experiment, EntryData):
                     try:
                         step_list.extend(handle_section(activity))
                     except (AttributeError, TypeError, NameError) as e:
-                        print(f'An error occurred in section {section}: {e}')
+                        print(f'An error occurred in section YYY {section}: {e}')
         self.steps = [step for step in step_list if step is not None]
 
         archive.workflow2 = None

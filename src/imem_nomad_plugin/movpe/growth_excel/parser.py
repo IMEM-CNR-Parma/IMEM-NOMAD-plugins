@@ -427,7 +427,7 @@ class ParserMovpeIMEM(MatchingParser):
             substrate_id = fill_quantity(substrate_row, 'Substrates')
             # creating Substrate archives
             substrate_filename = (
-                f'{substrate_id}_{substrate_index}.SubstrateIKZ.archive.{filetype}'
+                f'{substrate_id}_{substrate_index}.SubstrateIMEM.archive.{filetype}'
             )
             substrate_data = SubstrateMovpe()
             substrate_data.geometry = Shape()
@@ -519,11 +519,12 @@ class ParserMovpeIMEM(MatchingParser):
             substrate_id = fill_quantity(substrates_sheet.iloc[0], 'Substrates')
         except IndexError:
             substrate_id = None
-        # TODO try to get rid of the fetch_substarte as it slows down the processing
-        sleep(1.5)
+        # if a substrate will be located in a different upload, implement the following:
+        # fetch_substrate(archive, sample_id, substrate_id, logger)
+        # sleep(1.5)
         substrate_ref = None
         if substrate_id and sample_id:
-            substrate_ref = fetch_substrate(archive, sample_id, substrate_id, logger)
+            substrate_ref = f'../uploads/{archive.m_context.upload_id}/archive/{hash(archive.m_context.upload_id, substrate_filename)}#data'
         sub_ref = None
         if substrate_ref is not None:
             sub_ref = SubstrateReference(reference=substrate_ref)
@@ -639,8 +640,7 @@ class ParserMovpeIMEM(MatchingParser):
             growth_step.environment = ChamberEnvironmentMovpe()
             growth_step.environment.pressure = Pressure()
             growth_step.environment.rotation = Rotation()
-            growth_step.environment.gas_flow = [GasFlowMovpe()]
-            growth_step.environment.gas_flow[0].gas = PubChemPureSubstanceSection()
+            growth_step.environment.gas_flow = []
             growth_step.environment.uniform_gas_flow_rate = VolumetricFlowRate()
             growth_step.sample_parameters = [SampleParametersMovpe()]
             growth_step.sample_parameters[
@@ -680,9 +680,13 @@ class ParserMovpeIMEM(MatchingParser):
                 step, 'Carrier Gas'
             )
             if growth_step_environment_gas_flow_gas_name:
-                growth_step.environment.gas_flow[
-                    0
-                ].gas.name = growth_step_environment_gas_flow_gas_name
+                growth_step.environment.gas_flow.append(
+                    GasFlowMovpe(
+                        gas=PubChemPureSubstanceSection(
+                            name=growth_step_environment_gas_flow_gas_name,
+                        ),
+                    )
+                )
 
             growth_step_environment_uniform_gas_flow_rate_set_value = fill_quantity(
                 step, 'Uniform Valve', read_unit='cm ** 3 / minute'
@@ -764,8 +768,7 @@ class ParserMovpeIMEM(MatchingParser):
             pregrowth_step.environment = ChamberEnvironmentMovpe()
             pregrowth_step.environment.pressure = Pressure()
             pregrowth_step.environment.rotation = Rotation()
-            pregrowth_step.environment.gas_flow = [GasFlowMovpe()]
-            pregrowth_step.environment.gas_flow[0].gas = PubChemPureSubstanceSection()
+            pregrowth_step.environment.gas_flow = []
             pregrowth_step.environment.uniform_gas_flow_rate = VolumetricFlowRate()
             pregrowth_step.sample_parameters = [SampleParametersMovpe()]
             pregrowth_step.sample_parameters[
@@ -807,9 +810,13 @@ class ParserMovpeIMEM(MatchingParser):
                 step, 'Carrier Gas'
             )
             if pregrowth_step_environment_gas_flow_gas_name:
-                pregrowth_step.environment.gas_flow[
-                    0
-                ].gas.name = pregrowth_step_environment_gas_flow_gas_name
+                pregrowth_step.environment.gas_flow.append(
+                    GasFlowMovpe(
+                        gas=PubChemPureSubstanceSection(
+                            name=pregrowth_step_environment_gas_flow_gas_name,
+                        ),
+                    )
+                )
 
             pregrowth_step_environment_uniform_gas_flow_rate_set_value = fill_quantity(
                 step, 'Carrier Gas Flow', read_unit='cm ** 3 / minute'
@@ -853,6 +860,7 @@ class ParserMovpeIMEM(MatchingParser):
                 pregrowth_process_object.pocket = growth_pocket
 
         pregrowth_process_object.lab_id = sample_id
+        pregrowth_process_object.steps = pre_process_steps_lists
 
         # creating pregrowth process archives
         pregrowth_process_filename = (
@@ -934,6 +942,7 @@ class ParserMovpeIMEM(MatchingParser):
                 )
                 afm_filename = f'{afm_name}_{index}.AFMmeasurement.archive.{filetype}'
             else:
+                afm_data.name = f'{sample_id} afm {index}'
                 afm_filename = f'{sample_id}_{index}.AFMmeasurement.archive.{filetype}'
 
             afm_datetime = fill_quantity(row, 'Date')
