@@ -72,18 +72,12 @@ from nomad_material_processing.vapor_deposition import (
     SubstrateHeater,
     Pressure,
     Temperature,
-    MolarFlowRate,
     VolumetricFlowRate,
-    GasFlow,
 )
 
 from nomad_material_processing.vapor_deposition.cvd import (
-    BubblerEvaporator,
-    FlashEvaporator,
     CVDSource,
     Rotation,
-    GasSupply,
-    GasLine,
 )
 
 from nomad_measurements import (
@@ -882,65 +876,6 @@ class LayTecTemperature(Temperature):
     """
 
     pass
-
-
-class BubblerSourceIMEM(CVDSource):
-    vapor_source = SubSection(
-        section_def=BubblerEvaporator,
-    )
-
-
-class FlashSourceIMEM(CVDSource):
-    vapor_source = SubSection(
-        section_def=FlashEvaporator,
-        description="""
-        Example: A heater, a filament, a laser, a bubbler, etc.
-        """,
-    )
-
-
-class GasCylinderIMEM(GasLine):
-    """
-    A gas line used in MOVPE
-    """
-
-    effective_flow_rate = SubSection(
-        section_def=VolumetricFlowRate,
-        description="""
-        Effective flow rate, to be defined better.
-        """,
-    )
-
-
-class GasSourceIMEM(CVDSource):
-    dilution_in_cylinder = Quantity(
-        type=np.float64,
-        description='FILL THE DESCRIPTION',
-        a_eln={'component': 'NumberEditQuantity'},
-    )
-    gas_valve = Quantity(
-        type=bool,
-        description='is the valve open?',
-        a_eln=ELNAnnotation(
-            component='BoolEditQuantity',
-        ),
-    )
-    vapor_source = SubSection(
-        section_def=GasCylinderIMEM,
-    )
-
-
-class GasFlowMovpe(GasFlow):
-    gas = SubSection(
-        section_def=PureSubstanceSection,
-    )
-    flow_rate = SubSection(
-        section_def=VolumetricFlowRate,
-        label='Push Flow Rate',
-    )
-    purge_flow_rate = SubSection(
-        section_def=VolumetricFlowRate,
-    )
 
 
 class ChamberEnvironmentMovpe(ChamberEnvironment):

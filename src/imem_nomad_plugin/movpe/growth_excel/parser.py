@@ -59,6 +59,13 @@ from nomad_material_processing.vapor_deposition.cvd import (
     PartialVaporPressure,
     BubblerEvaporator,
     Rotation,
+    BubblerSource,
+    GasCylinderSource,
+    GasCylinderEvaporator,
+    PushPurgeGasFlow,
+    MistSource,
+    MistEvaporator,
+    ComponentConcentration,
 )
 
 from imem_nomad_plugin.general.schema import (
@@ -81,7 +88,6 @@ from imem_nomad_plugin.movpe.schema import (
     ThinFilmStackMovpeReference,
     SampleParametersMovpe,
     ChamberEnvironmentMovpe,
-    GasFlowMovpe,
     ShaftTemperature,
     FilamentTemperature,
     SubstrateMovpe,
@@ -93,9 +99,6 @@ from imem_nomad_plugin.movpe.schema import (
     XRDmeasurementReference,
     AFMmeasurementReference,
     CharacterizationMovpeIMEM,
-    BubblerSourceIMEM,
-    GasSourceIMEM,
-    GasCylinderIMEM,
 )
 
 from imem_nomad_plugin.utils import (
@@ -123,7 +126,7 @@ def populate_bubblers(growth_step: pd.DataFrame, bub_first_col: str):
     for columns in groups:
         if any(bub_first_col in item for item in columns):
             quantity, sep, index = columns[0].rpartition('.')
-            bubbler_obj = BubblerSourceIMEM()
+            bubbler_obj = BubblerSource()
             bubbler_obj.material = [PureSubstanceComponent()]
             bubbler_obj.material[0].pure_substance = PureSubstanceSection()
             bubbler_obj.vapor_source = BubblerEvaporator()
@@ -135,6 +138,11 @@ def populate_bubblers(growth_step: pd.DataFrame, bub_first_col: str):
             bubbler_obj.name = material
             bubbler_obj.material[0].substance_name = material
             bubbler_obj.material[0].pure_substance.name = material
+
+            valve = fill_quantity(growth_step, f'Bubbler Valve{sep}{index}')
+            if valve:
+                bubbler_obj.valve = valve
+
             bub_temp = fill_quantity(
                 growth_step, f'Bubbler Temp{sep}{index}', read_unit='celsius'
             )
@@ -202,10 +210,10 @@ def populate_cylinder(growth_step: pd.DataFrame, gas_first_col: str):
     for columns in groups:
         if any(gas_first_col in item for item in columns):
             quantity, sep, index = columns[0].rpartition('.')
-            cylinder_obj = GasSourceIMEM()
+            cylinder_obj = GasCylinderSource()
             cylinder_obj.material = [PureSubstanceComponent()]
             cylinder_obj.material[0].pure_substance = PureSubstanceSection()
-            cylinder_obj.vapor_source = GasCylinderIMEM()
+            cylinder_obj.vapor_source = GasCylinderEvaporator()
             cylinder_obj.vapor_source.pressure = Pressure()
             cylinder_obj.vapor_source.total_flow_rate = VolumetricFlowRate()
             cylinder_obj.vapor_source.effective_flow_rate = VolumetricFlowRate()
@@ -215,21 +223,29 @@ def populate_cylinder(growth_step: pd.DataFrame, gas_first_col: str):
             cylinder_obj.material[0].substance_name = material
             cylinder_obj.material[0].pure_substance.name = material
 
-            cyl_press = fill_quantity(
+            valve = fill_quantity(growth_step, f'Gas Valve{sep}{index}')
+            if valve:
+                cylinder_obj.valve = valve
+
+            dilution = fill_quantity(
                 growth_step, f'Cylinder Pressure{sep}{index}', read_unit='mbar'
             )
-            if cyl_press:
-                cylinder_obj.vapor_source.pressure.set_time = pd.Series([0])
-                cylinder_obj.vapor_source.pressure.set_value = pd.Series([cyl_press])
+            if dilution:
+                cylinder_obj.vapor_source.dilution_in_cylinder = dilution
 
-            cyl_flow = fill_quantity(
+            pressure = fill_quantity(
+                growth_step, f'Cylinder Pressure{sep}{index}', read_unit='mbar'
+            )
+            if pressure:
+                cylinder_obj.vapor_source.pressure.set_time = pd.Series([0])
+                cylinder_obj.vapor_source.pressure.set_value = pd.Series([pressure])
+
+            flow = fill_quantity(
                 growth_step, f'Flow from MFC{sep}{index}', read_unit='cm **3 / minute'
             )
-            if cyl_flow:
+            if flow:
                 cylinder_obj.vapor_source.total_flow_rate.set_time = pd.Series([0])
-                cylinder_obj.vapor_source.total_flow_rate.set_value = pd.Series(
-                    [cyl_flow]
-                )
+                cylinder_obj.vapor_source.total_flow_rate.set_value = pd.Series([flow])
 
             effective_flow = fill_quantity(
                 growth_step, f'Effective  Flow{sep}{index}', read_unit='cm **3 / minute'
@@ -242,6 +258,94 @@ def populate_cylinder(growth_step: pd.DataFrame, gas_first_col: str):
 
             cylinders.append(cylinder_obj)
     return cylinders
+
+
+def populate_mist_source(
+    growth_step: pd.DataFrame,
+    growthstep_first_col: str,
+    mist_frame: pd.DataFrame,
+    mist_first_col: str,
+):
+    """
+    Populate dopants from the substrate row.
+
+    The function usage implies that the repeated columns are named
+    through the rename_block_cols function as follows:
+    'Mist Material.1', 'Mist Pressure.1', 'Mist Material.2', 'Mist Pressure.2', ...
+    and not as pandas default:
+    'Mist Material', 'Mist Pressure', 'Mist Material.1', 'Mist Pressure.1', ...
+    """
+    source_groups = split_list_by_element(growth_step.index, growthstep_first_col)
+    material_groups = []
+    if not mist_frame.empty:
+        material_groups = split_list_by_element(mist_frame.index, mist_first_col)
+    mists = []
+    for source_col in source_groups:
+        if any(growthstep_first_col in item for item in source_col):
+            quantity, sep, index = source_col[0].rpartition('.')
+            mist_obj = MistSource()
+            mist_obj.material = []
+            mist_obj.vapor_source = MistEvaporator()
+            mist_obj.vapor_source.temperature = Temperature()
+            mist_obj.vapor_source.total_flow_rate = VolumetricFlowRate()
+
+            if not mist_frame.empty:
+                item = fill_quantity(mist_frame, 'Item')
+                if item:
+                    mist_obj.item = item
+
+                stirring = fill_quantity(mist_frame, 'Time')
+                if stirring:
+                    mist_obj.stirring_time = stirring
+
+                notes = fill_quantity(mist_frame, 'Notes')
+                if notes:
+                    mist_obj.description = notes
+
+                temperature = fill_quantity(
+                    mist_frame,
+                    'Temperature',
+                    read_unit='celsius',
+                )
+                if temperature:
+                    mist_obj.vapor_source.temperature.set_time = pd.Series([0])
+                    mist_obj.vapor_source.temperature.set_value = pd.Series(
+                        [temperature]
+                    )
+
+            name = fill_quantity(growth_step, f'MIST Source 1{sep}{index}')
+            if name:
+                mist_obj.name = name
+
+            valve = fill_quantity(growth_step, f'MIST Valve{sep}{index}')
+            if valve:
+                mist_obj.valve = valve
+
+            flow = fill_quantity(
+                growth_step, f'MIST Flow MFC{sep}{index}', read_unit='cm **3 / minute'
+            )
+            if flow:
+                mist_obj.vapor_source.total_flow_rate.set_time = pd.Series([0])
+                mist_obj.vapor_source.total_flow_rate.set_value = pd.Series([flow])
+
+            for columns in material_groups:
+                if any(mist_first_col in item for item in columns):
+                    quantity2, sep2, index2 = columns[0].rpartition('.')
+
+                    material = fill_quantity(mist_frame, f'Material{sep2}{index2}')
+                    conc = fill_quantity(mist_frame, f'Concentration{sep2}{index2}')
+                    mist_obj.material.append(
+                        ComponentConcentration(
+                            substance_name=material,
+                            pure_substance=PubChemPureSubstanceSection(
+                                name=material,
+                            ),
+                            theoretical_concentration=conc,
+                            effective_concentration=conc,
+                        )
+                    )
+            mists.append(mist_obj)
+    return mists
 
 
 def populate_elements(substrate_row: pd.DataFrame):
@@ -320,10 +424,11 @@ class ParserMovpeIMEM(MatchingParser):
         data_file_with_path = mainfile.split('raw/')[-1]
         filetype = 'yaml'
 
+        ################################ excel reading ################################
+
         # creates a new DataFrame with the stripped column names.
         # sheet = pd.read_excel(xlsx, 'Overview', comment='#', converters={'Sample': str})
         # overview_sheet = sheet.rename(columns=lambda x: x.strip())
-
         if 'Overview' in xlsx.sheet_names:
             overview_sheet = pd.read_excel(
                 xlsx, 'Overview', comment='#', converters={'Sample': str}
@@ -383,13 +488,29 @@ class ParserMovpeIMEM(MatchingParser):
             growthrun_cols = rename_block_cols(
                 growthrun_cols, gas_source_quantities, gas_first_col
             )
+            mist_quantities = [
+                'MIST Source 1',
+                'MIST Flow MFC',
+                'MIST Valve',
+            ]
+            mist_first_col1 = 'MIST Source 1'
+            growthrun_cols = rename_block_cols(
+                growthrun_cols, mist_quantities, mist_first_col1
+            )
             growthrun_sheet.columns = growthrun_cols
         if 'Precursors' in xlsx.sheet_names:
             precursors_sheet = pd.read_excel(xlsx, 'Precursors', comment='#')
             precursors_sheet.columns = precursors_sheet.columns.str.strip()
         if 'Mist' in xlsx.sheet_names:
             mist_sheet = pd.read_excel(xlsx, 'Mist', comment='#')
-            mist_sheet.columns = mist_sheet.columns.str.strip()
+            mist_cols = clean_col_names(mist_sheet)
+            mist_quantities = [
+                'Material',
+                'Concentration',
+            ]
+            mist_first_col2 = 'Material'
+            mist_cols = rename_block_cols(mist_cols, mist_quantities, mist_first_col2)
+            mist_sheet.columns = mist_cols
         if 'Pregrowth' in xlsx.sheet_names:
             pregrowth_sheet = pd.read_excel(xlsx, 'Pregrowth', comment='#')
             pregrowth_sheet.columns = pregrowth_sheet.columns.str.strip()
@@ -417,6 +538,7 @@ class ParserMovpeIMEM(MatchingParser):
             sample_id = fill_quantity(overview_sheet.iloc[0], 'Sample')
         except IndexError:
             sample_id = None
+        ############################## end excel reading ##############################
 
         # creating Substrate archives
         substrate_index = None
@@ -681,7 +803,7 @@ class ParserMovpeIMEM(MatchingParser):
             )
             if growth_step_environment_gas_flow_gas_name:
                 growth_step.environment.gas_flow.append(
-                    GasFlowMovpe(
+                    PushPurgeGasFlow(
                         gas=PubChemPureSubstanceSection(
                             name=growth_step_environment_gas_flow_gas_name,
                         ),
@@ -710,17 +832,34 @@ class ParserMovpeIMEM(MatchingParser):
                     [growth_step_sample_parameters_filament_temperature_set_value]
                 )
 
-            growth_step.sources = populate_bubblers(
-                step, bub_first_col
-            ) + populate_cylinder(
-                step, gas_first_col
-            )  # + populate_gas_source(step_index, growthrun_sheet)
+            # the assumption stands here that the is only ONE MIST SOURCE
+            mist_row = None
+            for mist_index, row in mist_sheet.iterrows():
+                if mist_index == 0:  # <--------------------------
+                    mist_row = row
+                    break
 
+            bubblers = populate_bubblers(step, bub_first_col)
+            gas_cylinders = populate_cylinder(step, gas_first_col)
+            mist = populate_mist_source(
+                step, mist_first_col1, mist_row, mist_first_col2
+            )
+
+            sources = []
+            if bubblers:
+                sources += bubblers
+            if gas_cylinders:
+                sources += gas_cylinders
+            if mist:
+                sources += mist
+
+            growth_step.sources = sources
             process_steps_lists.append(growth_step)
 
         # creating growth process objects
         growth_process_object = GrowthMovpeIMEM()
 
+        growth_process_object.name = f'{sample_id} growth'
         growth_process_object.lab_id = sample_id
 
         if not substrates_sheet.empty:
@@ -745,7 +884,9 @@ class ParserMovpeIMEM(MatchingParser):
         growth_process_object.steps = process_steps_lists
 
         # creating growth process archives
-        growth_process_filename = f'{sample_id}.GrowthMovpeIMEM.archive.{filetype}'
+        growth_process_filename = (
+            f'{sample_id}-growth.GrowthMovpeIMEM.archive.{filetype}'
+        )
         # Activity.normalize(growth_process_object, archive, logger)
         growth_process_archive = EntryArchive(
             data=growth_process_object if growth_process_object else GrowthMovpeIMEM(),
@@ -811,7 +952,7 @@ class ParserMovpeIMEM(MatchingParser):
             )
             if pregrowth_step_environment_gas_flow_gas_name:
                 pregrowth_step.environment.gas_flow.append(
-                    GasFlowMovpe(
+                    PushPurgeGasFlow(
                         gas=PubChemPureSubstanceSection(
                             name=pregrowth_step_environment_gas_flow_gas_name,
                         ),
