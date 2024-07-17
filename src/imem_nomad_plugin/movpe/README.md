@@ -25,11 +25,8 @@ IMEM_plugin/
 │       ├── __init__.py
 │       ├── movpe
 │       │   ├── growth_excel
-│       │   │   ├── nomad_plugin.yaml
 │       │   │   └── parser.py
-│       │   ├── nomad_plugin.yaml
 │       │   └── schema.py
-│       ├── nomad_plugin.yaml
 │       └── utils.py
 └── tests
     └── data
@@ -42,15 +39,10 @@ IMEM_plugin/
 - `growth_excel/`: contains the source code to parse the excel file.
 - `schema.py` defines the structure of the data after it has been parsed. It specifies the fields that the structured data will contain and the types of those fields.
 - `parser.py` contains the logic for parsing the raw data from the MOVPE growth process. This includes reading the data from its original format, extracting the relevant information, and transforming it into a structured format.
-- `nomad_plugin.yaml` defines the raw file matching rules of the parser. Check [NOMAD plugin official docs](https://nomad-lab.eu/prod/v1/staging/docs/howto/customization/plugins_dev.html#parser-plugin-metadata) for more info.
 
 ## Usage
 
 - You need to copy and fill the excel files in `tests/data` folder, then drag and drop them into a new NOMAD upload.
-
-- Follow the raw file matching rules in `nomad_plugin.yaml` of each parser. In general, a file must:
-  - have specific extension.
-  - contain specific column headers.
 
 > [!CAUTION]
 > The parser is built to match specific template files. If files extension is changed or they are missing regex matching in the column headers, they might not be recognized by the parsers.

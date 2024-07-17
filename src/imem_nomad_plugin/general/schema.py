@@ -70,21 +70,7 @@ class IMEMCategory(EntryDataCategory):
 
 
 class IMEMMOVPECategory(EntryDataCategory):
-    m_def = Category(label='MOVPE', categories=[EntryDataCategory, IMEMCategory])
-
-
-class IMEMMOVPE1Category(EntryDataCategory):
-    m_def = Category(label='MOVPE 1', categories=[EntryDataCategory, IMEMCategory])
-
-
-class IMEMMOVPE2Category(EntryDataCategory):
-    m_def = Category(label='MOVPE 2', categories=[EntryDataCategory, IMEMCategory])
-
-
-class IMEMDSCategory(EntryDataCategory):
-    m_def = Category(
-        label='Directional Solidification', categories=[EntryDataCategory, IMEMCategory]
-    )
+    m_def = Category(label='IMEM MOVPE', categories=[EntryDataCategory, IMEMCategory])
 
 
 class IMEMHallCategory(EntryDataCategory):
