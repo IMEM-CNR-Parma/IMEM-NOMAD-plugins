@@ -519,7 +519,7 @@ class Bubblers(ArchiveSection):
     """
 
     m_def = Section(
-        more={'label_quantity': 'material'},
+        label_quantity='material',
     )
     material = Quantity(
         type=str,
@@ -592,7 +592,7 @@ class GasSource(ArchiveSection):
     """
 
     m_def = Section(
-        more={'label_quantity': 'material'},
+        label_quantity='material',
     )
     material = Quantity(
         type=str,
@@ -1063,7 +1063,8 @@ class AFMmeasurement(Measurement, EntryData):
     """
 
     m_def = Section(
-        a_eln=None, more={'label_quantity': 'sample_id'}, categories=[IMEMMOVPECategory]
+        a_eln=None,
+        label_quantity='lab_id',
     )
     method = Quantity(
         type=str,
@@ -1236,7 +1237,7 @@ class ReflectanceMeasurement(Measurement, EntryData):
     )
 
 
-class ReflectanceMeasurements(SectionReference):
+class ReflectanceReference(SectionReference):
     """
     A section used for referencing a ReflectanceMeasurement.
     """
@@ -1367,7 +1368,7 @@ class HallMeasurement(Measurement, EntryData):
 
     m_def = Section(
         a_eln={'hide': ['steps']},
-        more={'label_quantity': 'sample_id'},
+        label_quantity='lab_id',
         categories=[IMEMMOVPECategory],
     )
     method = Quantity(
@@ -1825,7 +1826,7 @@ class MovpeIMEMExperiment(Experiment, EntryData, TableData):
         repeats=True,
     )
     reflectance_measurement = SubSection(
-        section_def=ReflectanceMeasurements,
+        section_def=ReflectanceReference,
         repeats=True,
     )
     uv_measurement = SubSection(

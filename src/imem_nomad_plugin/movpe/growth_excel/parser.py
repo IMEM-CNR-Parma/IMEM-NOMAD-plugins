@@ -75,6 +75,10 @@ from imem_nomad_plugin.general.schema import (
 from imem_nomad_plugin.characterization.schema import (
     AFMmeasurement,
     AFMresults,
+    HallMeasurement,
+    HallResults,
+    ReflectanceMeasurement,
+    ReflectanceResults,
 )
 
 from imem_nomad_plugin.movpe.schema import (
@@ -98,6 +102,8 @@ from imem_nomad_plugin.movpe.schema import (
     FilamentTemperature,
     XRDmeasurementReference,
     AFMmeasurementReference,
+    HallMeasurementReference,
+    ReflectanceReference,
     CharacterizationMovpeIMEM,
 )
 
@@ -277,7 +283,11 @@ def populate_mist_source(
     """
     source_groups = split_list_by_element(growth_step.index, growthstep_first_col)
     material_groups = []
-    if not mist_frame.empty:
+    if (
+        mist_frame is not None
+        and isinstance(mist_frame, pd.DataFrame)
+        and not mist_frame.empty
+    ):
         material_groups = split_list_by_element(mist_frame.index, mist_first_col)
     mists = []
     for source_col in source_groups:
@@ -289,7 +299,11 @@ def populate_mist_source(
             mist_obj.vapor_source.temperature = Temperature()
             mist_obj.vapor_source.total_flow_rate = VolumetricFlowRate()
 
-            if not mist_frame.empty:
+            if (
+                mist_frame is not None
+                and isinstance(mist_frame, pd.DataFrame)
+                and not mist_frame.empty
+            ):
                 item = fill_quantity(mist_frame, 'Item')
                 if item:
                     mist_obj.item = item
@@ -434,6 +448,9 @@ class ParserMovpeIMEM(MatchingParser):
                 xlsx, 'Overview', comment='#', converters={'Sample': str}
             )
             overview_sheet.columns = overview_sheet.columns.str.strip()
+            overview_sheet = overview_sheet.applymap(
+                lambda x: x.strip() if isinstance(x, str) else x
+            )
         if 'Substrate' in xlsx.sheet_names:
             substrates_sheet = pd.read_excel(
                 xlsx,
@@ -458,6 +475,9 @@ class ParserMovpeIMEM(MatchingParser):
                 substrate_cols, element_quantities, element_first_col
             )
             substrates_sheet.columns = substrate_cols
+            substrates_sheet = substrates_sheet.applymap(
+                lambda x: x.strip() if isinstance(x, str) else x
+            )
         if 'GrowthRun' in xlsx.sheet_names:
             growthrun_sheet = pd.read_excel(xlsx, 'GrowthRun', comment='#')
             growthrun_cols = clean_col_names(growthrun_sheet)
@@ -498,9 +518,15 @@ class ParserMovpeIMEM(MatchingParser):
                 growthrun_cols, mist_quantities, mist_first_col1
             )
             growthrun_sheet.columns = growthrun_cols
+            growthrun_sheet = growthrun_sheet.applymap(
+                lambda x: x.strip() if isinstance(x, str) else x
+            )
         if 'Precursors' in xlsx.sheet_names:
             precursors_sheet = pd.read_excel(xlsx, 'Precursors', comment='#')
             precursors_sheet.columns = precursors_sheet.columns.str.strip()
+            precursors_sheet = precursors_sheet.applymap(
+                lambda x: x.strip() if isinstance(x, str) else x
+            )
         if 'Mist' in xlsx.sheet_names:
             mist_sheet = pd.read_excel(xlsx, 'Mist', comment='#')
             mist_cols = clean_col_names(mist_sheet)
@@ -511,28 +537,49 @@ class ParserMovpeIMEM(MatchingParser):
             mist_first_col2 = 'Material'
             mist_cols = rename_block_cols(mist_cols, mist_quantities, mist_first_col2)
             mist_sheet.columns = mist_cols
+            mist_sheet = mist_sheet.applymap(
+                lambda x: x.strip() if isinstance(x, str) else x
+            )
         if 'Pregrowth' in xlsx.sheet_names:
             pregrowth_sheet = pd.read_excel(xlsx, 'Pregrowth', comment='#')
             pregrowth_sheet.columns = pregrowth_sheet.columns.str.strip()
+            pregrowth_sheet = pregrowth_sheet.applymap(
+                lambda x: x.strip() if isinstance(x, str) else x
+            )
         if 'SampleCut' in xlsx.sheet_names:
             samplecut_sheet = pd.read_excel(xlsx, 'SampleCut', comment='#')
             samplecut_sheet.columns = samplecut_sheet.columns.str.strip()
+            samplecut_sheet = samplecut_sheet.applymap(
+                lambda x: x.strip() if isinstance(x, str) else x
+            )
         if 'HRXRD' in xlsx.sheet_names:
             hrxrd_sheet = pd.read_excel(
                 xlsx, 'HRXRD', converters={'Sample': str}, comment='#'
             )
             hrxrd_sheet.columns = hrxrd_sheet.columns.str.strip()
+            hrxrd_sheet = hrxrd_sheet.applymap(
+                lambda x: x.strip() if isinstance(x, str) else x
+            )
         if 'AFMReflectanceSEM' in xlsx.sheet_names:
             characterization_sheet = pd.read_excel(
                 xlsx, 'AFMReflectanceSEM', converters={'Sample': str}, comment='#'
             )
             characterization_sheet.columns = characterization_sheet.columns.str.strip()
+            characterization_sheet = characterization_sheet.applymap(
+                lambda x: x.strip() if isinstance(x, str) else x
+            )
         if 'ElectroOptical' in xlsx.sheet_names:
             electro_optical_sheet = pd.read_excel(xlsx, 'ElectroOptical', comment='#')
             electro_optical_sheet.columns = electro_optical_sheet.columns.str.strip()
+            electro_optical_sheet = electro_optical_sheet.applymap(
+                lambda x: x.strip() if isinstance(x, str) else x
+            )
         if 'Contacts' in xlsx.sheet_names:
             contacts_sheet = pd.read_excel(xlsx, 'Contacts', comment='#')
             contacts_sheet.columns = contacts_sheet.columns.str.strip()
+            contacts_sheet = contacts_sheet.applymap(
+                lambda x: x.strip() if isinstance(x, str) else x
+            )
 
         try:
             sample_id = fill_quantity(overview_sheet.iloc[0], 'Sample')
@@ -554,7 +601,7 @@ class ParserMovpeIMEM(MatchingParser):
             substrate_data = SubstrateMovpe()
             substrate_data.geometry = Shape()
             substrate_data.crystal_properties = SubstrateCrystalPropertiesMovpe()
-            substrate_data.crystal_properties.miscut = MiscutMovpe()
+            substrate_data.crystal_properties.miscut = [MiscutMovpe()]
 
             substrate_data.lab_id = substrate_id
             substrate_data.name = fill_quantity(substrate_row, 'Material')
@@ -613,11 +660,11 @@ class ParserMovpeIMEM(MatchingParser):
 
             miscut_angle = fill_quantity(substrate_row, 'Off-cut')
             if miscut_angle:
-                substrate_data.crystal_properties.miscut.angle = miscut_angle
+                substrate_data.crystal_properties.miscut[0].angle = miscut_angle
 
             mo = fill_quantity(substrate_row, 'Off-cut Orientation')
             if mo:
-                substrate_data.crystal_properties.miscut.orientation = mo
+                substrate_data.crystal_properties.miscut[0].orientation = mo
 
             substrate_data.elemental_composition = populate_elements(substrate_row)
 
@@ -1081,10 +1128,10 @@ class ParserMovpeIMEM(MatchingParser):
                         lab_id=str(afm_name),
                     )
                 )
-                afm_filename = f'{afm_name}_{index}.AFMmeasurement.archive.{filetype}'
+                afm_filename = f'{afm_name}_{index}.AFM.archive.{filetype}'
             else:
                 afm_data.name = f'{sample_id} afm {index}'
-                afm_filename = f'{sample_id}_{index}.AFMmeasurement.archive.{filetype}'
+                afm_filename = f'{sample_id}_{index}.AFMm.archive.{filetype}'
 
             afm_datetime = fill_quantity(row, 'Date')
             if afm_datetime:
@@ -1094,7 +1141,9 @@ class ParserMovpeIMEM(MatchingParser):
             if afm_results_notes:
                 afm_data.results[0].name = afm_results_notes
 
-            afm_results_roughness = fill_quantity(row, 'Roughness')
+            afm_results_roughness = fill_quantity(
+                row, 'Roughness', read_unit='nanometer'
+            )
             if afm_results_roughness:
                 afm_data.results[0].roughness = afm_results_roughness
 
@@ -1118,6 +1167,126 @@ class ParserMovpeIMEM(MatchingParser):
                 AFMmeasurementReference(
                     name=f'{afm_name} afm {index}',
                     reference=f'../uploads/{archive.m_context.upload_id}/archive/{hash(archive.m_context.upload_id, afm_filename)}#data',
+                )
+            )
+
+        # creating Hall archive
+        hall_measurements = []
+        for index, row in electro_optical_sheet.iterrows():
+            hall_data = HallMeasurement()
+            hall_data.samples = []
+            hall_data.results = [HallResults()]
+
+            hall_name = fill_quantity(row, 'Sample')
+            if hall_name:
+                hall_data.name = f'{hall_name} hall {index}'
+                hall_data.samples.append(
+                    CompositeSystemReference(
+                        lab_id=str(hall_name),
+                    )
+                )
+                hall_filename = f'{hall_name}_{index}.Hall.archive.{filetype}'
+            else:
+                hall_data.name = f'{sample_id} hall {index}'
+                hall_filename = f'{sample_id}_{index}.Hall.archive.{filetype}'
+
+            hall_datetime = fill_quantity(row, 'Date')
+            if hall_datetime:
+                hall_data.datetime = hall_datetime
+
+            hall_results_notes = fill_quantity(row, 'Notes')
+            if hall_results_notes:
+                hall_data.results[0].name = hall_results_notes
+
+            resistivity = fill_quantity(row, 'Resistivity', read_unit='ohm * cm')
+            if resistivity:
+                hall_data.results[0].resistivity = resistivity
+
+            mobility = fill_quantity(row, 'Mobility', read_unit='cm ** 2 / V / s')
+            if mobility:
+                hall_data.results[0].hall_mobility = mobility
+
+            carrier_concentration = fill_quantity(
+                row, 'Carrier Concentration', read_unit='1 / cm ** 3'
+            )
+            if carrier_concentration:
+                hall_data.results[0].carrier_density = carrier_concentration
+
+            hall_archive = EntryArchive(
+                data=hall_data if hall_data else HallMeasurement(),
+                m_context=archive.m_context,
+                metadata=EntryMetadata(upload_id=archive.m_context.upload_id),
+            )
+            create_archive(
+                hall_archive.m_to_dict(),
+                archive.m_context,
+                hall_filename,
+                filetype,
+                logger,
+            )
+            hall_measurements.append(
+                HallMeasurementReference(
+                    name=f'{hall_name} hall {index}',
+                    reference=f'../uploads/{archive.m_context.upload_id}/archive/{hash(archive.m_context.upload_id, hall_filename)}#data',
+                )
+            )
+
+        # creating reflectance archive
+        reflec_measurements = []
+        for index, row in characterization_sheet.iterrows():
+            reflec_data = ReflectanceMeasurement()
+            reflec_data.samples = []
+            reflec_data.results = [ReflectanceResults()]
+
+            reflec_name = fill_quantity(row, 'Sample')
+            if reflec_name:
+                reflec_data.name = f'{reflec_name} reflectance {index}'
+                reflec_data.samples.append(
+                    CompositeSystemReference(
+                        lab_id=str(reflec_name),
+                    )
+                )
+                reflec_filename = (
+                    f'{reflec_name}_{index}.Reflectance.archive.{filetype}'
+                )
+            else:
+                reflec_data.name = f'{sample_id} hall {index}'
+                reflec_filename = f'{sample_id}_{index}.Reflectance.archive.{filetype}'
+
+            datetime = fill_quantity(row, 'Date')
+            if datetime:
+                reflec_data.datetime = datetime
+
+            results_notes = fill_quantity(row, 'Notes')
+            if results_notes:
+                reflec_data.results[0].name = results_notes
+
+            thickness = fill_quantity(row, 'Thickness', read_unit='nanometer')
+            if thickness:
+                reflec_data.results[0].thickness = thickness
+
+            growth_rate = fill_quantity(
+                row, 'Growth Rate', read_unit='nanometer/minute'
+            )
+            if growth_rate:
+                reflec_data.results[0].growth_rate = growth_rate
+
+            reflec_archive = EntryArchive(
+                data=reflec_data if reflec_data else ReflectanceMeasurement(),
+                m_context=archive.m_context,
+                metadata=EntryMetadata(upload_id=archive.m_context.upload_id),
+            )
+            create_archive(
+                reflec_archive.m_to_dict(),
+                archive.m_context,
+                reflec_filename,
+                filetype,
+                logger,
+            )
+            reflec_measurements.append(
+                ReflectanceReference(
+                    name=f'{reflec_name} reflectance {index}',
+                    reference=f'../uploads/{archive.m_context.upload_id}/archive/{hash(archive.m_context.upload_id, reflec_filename)}#data',
                 )
             )
 
@@ -1177,6 +1346,8 @@ class ParserMovpeIMEM(MatchingParser):
             characterization=CharacterizationMovpeIMEM(
                 xrd=xrd_measurements,
                 afm=afm_measurements,
+                hall=hall_measurements,
+                reflectance=reflec_measurements,
             ),
         )
         experiment_archive = EntryArchive(
