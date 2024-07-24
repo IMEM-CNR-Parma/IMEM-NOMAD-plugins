@@ -59,22 +59,22 @@ from nomad.utils import hash
 from imem_nomad_plugin.utils import create_archive
 
 configuration = config.get_plugin_entry_point(
-    'imem_nomad_plugin.general:general_schema'
+    "imem_nomad_plugin.general:general_schema"
 )
 
 m_package = SchemaPackage()
 
 
 class IMEMCategory(EntryDataCategory):
-    m_def = Category(label='IMEM', categories=[EntryDataCategory])
+    m_def = Category(label="IMEM", categories=[EntryDataCategory])
 
 
 class IMEMMOVPECategory(EntryDataCategory):
-    m_def = Category(label='IMEM MOVPE', categories=[EntryDataCategory, IMEMCategory])
+    m_def = Category(label="IMEM MOVPE", categories=[EntryDataCategory, IMEMCategory])
 
 
 class IMEMHallCategory(EntryDataCategory):
-    m_def = Category(label='Hall', categories=[EntryDataCategory, IMEMCategory])
+    m_def = Category(label="Hall", categories=[EntryDataCategory, IMEMCategory])
 
 
 class SubstratePreparationStep(Activity):
@@ -92,10 +92,10 @@ class SubstratePreparationStepReference(ActivityReference):
 
     reference = Quantity(
         type=SubstratePreparationStep,
-        description='A reference to a NOMAD `SubstratePreparationSteps` entry.',
+        description="A reference to a NOMAD `SubstratePreparationSteps` entry.",
         a_eln=ELNAnnotation(
-            component='ReferenceEditQuantity',
-            label='SubstratePreparationSteps Reference',
+            component="ReferenceEditQuantity",
+            label="SubstratePreparationSteps Reference",
         ),
     )
 
@@ -115,27 +115,27 @@ class ComponentConcentration(ArchiveSection):
 
     alias = Quantity(
         type=str,
-        description='The alias given to this material, will be used to fill the system reference.',
-        a_eln={'component': 'StringEditQuantity'},
+        description="The alias given to this material, will be used to fill the system reference.",
+        a_eln={"component": "StringEditQuantity"},
     )
     intended_concentration = Quantity(
         type=np.float64,
-        description='The concentration planned for the mixed material.',
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mol / liter'},
-        unit='mol / liter',
-        label='Intended Concentration',
+        description="The concentration planned for the mixed material.",
+        a_eln={"component": "NumberEditQuantity", "defaultDisplayUnit": "mol / liter"},
+        unit="mol / liter",
+        label="Intended Concentration",
     )
     obtained_concentration = Quantity(
         type=np.float64,
-        description='The concentration calculated from the mixed material weights and volumes.',
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'mol / liter'},
-        unit='mol / liter',
-        label='Obtained Concentration',
+        description="The concentration calculated from the mixed material weights and volumes.",
+        a_eln={"component": "NumberEditQuantity", "defaultDisplayUnit": "mol / liter"},
+        unit="mol / liter",
+        label="Obtained Concentration",
     )
     system = Quantity(
         type=Reference(System.m_def),
-        description='A reference to the component system.',
-        a_eln=dict(component='ReferenceEditQuantity'),
+        description="A reference to the component system.",
+        a_eln=dict(component="ReferenceEditQuantity"),
     )
 
 
@@ -145,13 +145,13 @@ class SolutionProperties(ArchiveSection):
     """
 
     ph_value = Quantity(
-        type=np.dtype(np.float64), a_eln=dict(component='NumberEditQuantity')
+        type=np.dtype(np.float64), a_eln=dict(component="NumberEditQuantity")
     )
 
     final_volume = Quantity(
         type=np.dtype(np.float64),
-        unit=('ml'),
-        a_eln=dict(component='NumberEditQuantity', defaultDisplayUnit='ml'),
+        unit=("ml"),
+        a_eln=dict(component="NumberEditQuantity", defaultDisplayUnit="ml"),
     )
     components_concentration = SubSection(
         section_def=ComponentConcentration,
@@ -164,30 +164,30 @@ class SolutionStorage(ArchiveSection):
     Solution storage class
     """
 
-    start_date = Quantity(type=Datetime, a_eln=dict(component='DateTimeEditQuantity'))
+    start_date = Quantity(type=Datetime, a_eln=dict(component="DateTimeEditQuantity"))
 
-    end_date = Quantity(type=Datetime, a_eln=dict(component='DateTimeEditQuantity'))
+    end_date = Quantity(type=Datetime, a_eln=dict(component="DateTimeEditQuantity"))
 
     storage_condition = Quantity(
         type=str,
-        a_eln=dict(component='StringEditQuantity'),
+        a_eln=dict(component="StringEditQuantity"),
     )
     temperature = Quantity(
         type=np.dtype(np.float64),
-        unit=('°C'),
-        a_eln=dict(component='NumberEditQuantity', defaultDisplayUnit='°C'),
+        unit=("°C"),
+        a_eln=dict(component="NumberEditQuantity", defaultDisplayUnit="°C"),
     )
 
     atmosphere = Quantity(
         type=str,
         a_eln=dict(
-            component='EnumEditQuantity', props=dict(suggestions=['Ar', 'N2', 'Air'])
+            component="EnumEditQuantity", props=dict(suggestions=["Ar", "N2", "Air"])
         ),
     )
 
     comments = Quantity(
         type=str,
-        a_eln=dict(component='RichTextEditQuantity'),
+        a_eln=dict(component="RichTextEditQuantity"),
     )
 
 
@@ -201,13 +201,13 @@ class LiquidComponent(PureSubstanceComponent):
         description="""
         The name of the substance within the section where this component is contained.
         """,
-        a_eln=dict(component='StringEditQuantity'),
+        a_eln=dict(component="StringEditQuantity"),
     )
     volume = Quantity(
         type=np.float64,
-        description='The solvent for the current substance.',
-        unit='milliliter',
-        a_eln=dict(component='NumberEditQuantity', defaultDisplayUnit='milliliter'),
+        description="The solvent for the current substance.",
+        unit="milliliter",
+        a_eln=dict(component="NumberEditQuantity", defaultDisplayUnit="milliliter"),
     )
     pure_substance = SubSection(
         section_def=PureSubstanceSection,
@@ -222,7 +222,7 @@ class Solution(CompositeSystem, EntryData):
     Base class for a solution
     """
 
-    solvent_ratio = Quantity(type=str, a_eln=dict(component='StringEditQuantity'))
+    solvent_ratio = Quantity(type=str, a_eln=dict(component="StringEditQuantity"))
 
     solute = SubSection(
         description="""
@@ -262,10 +262,10 @@ class SolutionReference(CompositeSystemReference):
 
     reference = Quantity(
         type=Solution,
-        description='A reference to a NOMAD `Solution` entry.',
+        description="A reference to a NOMAD `Solution` entry.",
         a_eln=ELNAnnotation(
-            component='ReferenceEditQuantity',
-            label='Solution Reference',
+            component="ReferenceEditQuantity",
+            label="Solution Reference",
         ),
     )
 
@@ -277,20 +277,20 @@ class QuantifyMaterial(ProcessStep):
 
     alias = Quantity(
         type=str,
-        description='The alias given to this material, will be used in the mixing.',
-        a_eln={'component': 'StringEditQuantity'},
+        description="The alias given to this material, will be used in the mixing.",
+        a_eln={"component": "StringEditQuantity"},
     )
     container_mass = Quantity(
         type=float,
-        description='The mass of the container.',
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'gram'},
-        unit='gram',
+        description="The mass of the container.",
+        a_eln={"component": "NumberEditQuantity", "defaultDisplayUnit": "gram"},
+        unit="gram",
     )
     brutto_mass = Quantity(
         type=float,
-        description='The mass of the material including the container.',
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'gram'},
-        unit='gram',
+        description="The mass of the material including the container.",
+        a_eln={"component": "NumberEditQuantity", "defaultDisplayUnit": "gram"},
+        unit="gram",
     )
     component = SubSection(
         description="""
@@ -324,15 +324,15 @@ class QuantifyLiquidMaterial(QuantifyMaterial, SolutionPreparationStep):
     )
     measured_volume = Quantity(
         type=float,
-        description='The volume of the liquid material.',
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'liter'},
-        unit='liter',
+        description="The volume of the liquid material.",
+        a_eln={"component": "NumberEditQuantity", "defaultDisplayUnit": "liter"},
+        unit="liter",
     )
     density = Quantity(
         type=float,
-        description='The density of the liquid material.',
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'gram / liter'},
-        unit='gram / liter',
+        description="The density of the liquid material.",
+        a_eln={"component": "NumberEditQuantity", "defaultDisplayUnit": "gram / liter"},
+        unit="gram / liter",
     )
 
 
@@ -347,31 +347,31 @@ class MixMaterial(SolutionPreparationStep):
     )
     aliases = Quantity(
         type=str,
-        description='The aliases of materials that will be used in the mixing.',
-        a_eln={'component': 'StringEditQuantity'},
-        shape=['*'],
+        description="The aliases of materials that will be used in the mixing.",
+        a_eln={"component": "StringEditQuantity"},
+        shape=["*"],
     )
     mixed_alias = Quantity(
         type=str,
-        description='The alias given to the mixed material, used to mix with other components afterwards.',
-        a_eln={'component': 'StringEditQuantity'},
+        description="The alias given to the mixed material, used to mix with other components afterwards.",
+        a_eln={"component": "StringEditQuantity"},
     )
     temperature = Quantity(
         type=np.float64,
-        description='The temperature of the mixing process.',
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'celsius'},
-        unit='kelvin',
+        description="The temperature of the mixing process.",
+        a_eln={"component": "NumberEditQuantity", "defaultDisplayUnit": "celsius"},
+        unit="kelvin",
     )
     container_type = Quantity(
         type=str,
-        description='The type of container used for mixing.',
-        a_eln={'component': 'StringEditQuantity'},
+        description="The type of container used for mixing.",
+        a_eln={"component": "StringEditQuantity"},
     )
     rotation_speed = Quantity(
         type=float,
-        description='The rotation speed of the mixing process.',
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'rpm'},
-        unit='rpm',
+        description="The rotation speed of the mixing process.",
+        a_eln={"component": "NumberEditQuantity", "defaultDisplayUnit": "rpm"},
+        unit="rpm",
     )
     components_concentration = SubSection(
         section_def=ComponentConcentration,
@@ -385,34 +385,34 @@ class SolutionPreparationIMEM(Process, EntryData):
     """
 
     method = Quantity(
-        type=MEnum('Shaker', 'Ultrasoncic', 'Waiting', 'Stirring'),
+        type=MEnum("Shaker", "Ultrasoncic", "Waiting", "Stirring"),
         shape=[],
         a_eln=dict(
-            component='EnumEditQuantity',
+            component="EnumEditQuantity",
         ),
         categories=[IMEMCategory],
     )
     description = Quantity(
         type=str,
-        description='The description of the solution preparation.',
-        a_eln={'component': 'StringEditQuantity'},
+        description="The description of the solution preparation.",
+        a_eln={"component": "StringEditQuantity"},
     )
     atmosphere = Quantity(
         type=str,
-        description='The atmosphere used for the solution preparation.',
-        a_eln={'component': 'StringEditQuantity'},
+        description="The atmosphere used for the solution preparation.",
+        a_eln={"component": "StringEditQuantity"},
     )
     intended_tot_volume = Quantity(
         type=float,
-        description='The planned total volume of the solution.',
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'liter'},
-        unit='liter',
+        description="The planned total volume of the solution.",
+        a_eln={"component": "NumberEditQuantity", "defaultDisplayUnit": "liter"},
+        unit="liter",
     )
     obtained_tot_volume = Quantity(
         type=float,
-        description='The obtained total volume of the solution.',
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'liter'},
-        unit=' liter',
+        description="The obtained total volume of the solution.",
+        a_eln={"component": "NumberEditQuantity", "defaultDisplayUnit": "liter"},
+        unit=" liter",
     )
     solution = SubSection(
         section_def=SolutionReference,
@@ -434,14 +434,14 @@ class EtchingStep(ActivityStep):
     m_def = Section()
     duration = Quantity(
         type=float,
-        unit='second',
-        description='The duration of the etching step.',
+        unit="second",
+        description="The duration of the etching step.",
     )
     temperature = Quantity(
         type=np.float64,
-        description='The temperature of the etching process.',
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'celsius'},
-        unit='celsius',
+        description="The temperature of the etching process.",
+        a_eln={"component": "NumberEditQuantity", "defaultDisplayUnit": "celsius"},
+        unit="celsius",
     )
     etching_reagents = SubSection(section_def=CompositeSystem, repeats=True)
 
@@ -457,8 +457,8 @@ class Etching(SubstratePreparationStep, EntryData):
     )
     method = Quantity(
         type=str,
-        description='The etching method.',
-        default='Etching (MOVPE IMEM)',
+        description="The etching method.",
+        default="Etching (MOVPE IMEM)",
     )
     steps = SubSection(
         description="""
@@ -480,20 +480,20 @@ class Annealing(SubstratePreparationStep, EntryData):
     )
     method = Quantity(
         type=str,
-        description='The annealing method.',
-        default='Annealing (MOVPE IMEM)',
+        description="The annealing method.",
+        default="Annealing (MOVPE IMEM)",
     )
     temperature = Quantity(
         type=np.float64,
-        description='The temperature of the annealing process.',
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'celsius'},
-        unit='celsius',
+        description="The temperature of the annealing process.",
+        a_eln={"component": "NumberEditQuantity", "defaultDisplayUnit": "celsius"},
+        unit="celsius",
     )
     elapsed_time = Quantity(
         type=np.float64,
-        description='The elapsed time since the annealing process started.',
-        a_eln={'component': 'NumberEditQuantity', 'defaultDisplayUnit': 'minute'},
-        unit='minute',
+        description="The elapsed time since the annealing process started.",
+        a_eln={"component": "NumberEditQuantity", "defaultDisplayUnit": "minute"},
+        unit="minute",
     )
     annealing_reagents = SubSection(
         section_def=CompositeSystemReference,
@@ -507,17 +507,17 @@ class SubstratePreparationIMEM(Process, EntryData):
 
     m_def = Section(
         a_eln=None,
-        label='Substrate Preparation',
+        label="Substrate Preparation",
         categories=[IMEMCategory],
     )
     method = Quantity(
         type=str,
-        default='Substrate Process (MOVPE IMEM)',
+        default="Substrate Process (MOVPE IMEM)",
     )
     description = Quantity(
         type=str,
-        description='description',
-        a_eln={'component': 'StringEditQuantity'},
+        description="description",
+        a_eln={"component": "StringEditQuantity"},
     )
     substrates = SubSection(
         section_def=SubstrateReference,
@@ -535,14 +535,21 @@ class SampleCutIMEM(Process, EntryData):
     """
 
     m_def = Section(
-        a_eln={'hide': ['steps', 'samples', 'instruments']},
-        label='Sample Cut',
+        a_eln={"hide": ["steps", "samples", "instruments"]},
+        label="Sample Cut",
         categories=[IMEMCategory],
     )
     number_of_samples = Quantity(
         type=int,
         description='The number of samples generated from this "Sample Cut" Task.',
-        a_eln=dict(component='NumberEditQuantity'),
+        a_eln=dict(component="NumberEditQuantity"),
+    )
+    image = Quantity(
+        type=str,
+        shape=["*"],
+        description="image of the samples",
+        a_browser={"adaptor": "RawFileAdaptor"},
+        a_eln={"component": "FileEditQuantity"},
     )
     parent_sample = SubSection(
         description="""

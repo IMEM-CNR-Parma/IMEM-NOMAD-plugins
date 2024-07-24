@@ -150,7 +150,46 @@ def create_archive(
     #     )  # Upload(upload_id=matches["upload_id"][0]))
 
 
+def import_excel_sheet(
+    xlsx: pd.ExcelFile, sheet_name: str, converters=None
+) -> pd.DataFrame:
+    """
+    Imports a specified sheet from an Excel file into a pandas DataFrame with preprocessing steps to clean the data.
+
+    This function performs the following preprocessing steps on the specified Excel sheet:
+    1. Strips leading and trailing whitespace from column names to ensure consistency.
+    2. Applies a function to each cell in the DataFrame: if the cell contains a string,
+       it strips leading and trailing whitespace from it; otherwise,
+       the cell's original value is retained. This step helps in cleaning string data.
+    3. Replaces empty string cells ("") with pandas NA values.
+       This standardizes the representation of missing values across the DataFrame.
+    4. Drops all rows where all cells are NA, effectively removing completely empty rows from the DataFrame.
+       This step helps in reducing the DataFrame size and focusing on rows with data.
+    5. Identifies and removes columns that are named with a pattern indicating
+       they are likely automatically generated and empty (e.g., ".1", ".2").
+       These columns are usually the result of duplicate or empty columns
+       in the original Excel sheet and are not useful for analysis.
+
+    Parameters:
+    - xlsx (pd.ExcelFile): The Excel file to import the sheet from.
+    - sheet_name (str): The name of the sheet to import.
+
+    Returns:
+    - pd.DataFrame: A pandas DataFrame containing the cleaned data from the specified Excel sheet.
+    """
+    sheet = pd.read_excel(xlsx, sheet_name, comment="#", converters=converters)
+    sheet.columns = sheet.columns.str.strip()
+    sheet = sheet.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+    sheet.replace("", pd.NA, inplace=True)
+    sheet.dropna(how="all", inplace=True)
+    columns_to_remove = [col for col in sheet.columns if re.match(r"^\.\d+$", col)]
+    sheet.drop(columns=columns_to_remove, inplace=True)
+    return sheet
+
+
 def is_activity_section(section):
+    if section is None or section.m_def is None:
+        return False
     return any("Activity" in i.label for i in section.m_def.all_base_sections)
 
 
@@ -175,7 +214,7 @@ def handle_section(section):
         return [ExperimentStep(activity=section, name=section.name)]
 
 
-def fill_quantity(dataframe, column_header, read_unit=None):
+def fill_quantity(dataframe, column_header, read_unit=None, array=False):
     """
     Fetches a value from a DataFrame and optionally converts it to a specified unit.
     """
@@ -195,19 +234,33 @@ def fill_quantity(dataframe, column_header, read_unit=None):
     except (KeyError, IndexError):
         value = None
 
+    pint_value = None
     if read_unit is not None:
         try:
             if value != "" and value is not None:
-                value *= ureg(read_unit).to_base_units().magnitude
+                if not array:
+                    pint_value = ureg.Quantity(
+                        value,
+                        ureg(read_unit),
+                    )
+                else:
+                    pint_value = ureg.Quantity(
+                        [value],
+                        ureg(read_unit),
+                    )
+
             else:
                 value = None
         except ValueError:
             if hasattr(value, "empty") and not value.empty():
-                value *= ureg(read_unit).to_base_units().magnitude
+                pint_value = ureg.Quantity(
+                    value,
+                    ureg(read_unit),
+                )
             elif value == "":
-                value = None
+                pint_value = None
 
-    return value if isinstance(value, str) else value
+    return pint_value if read_unit is not None else value
 
 
 def clean_col_names(growth_run_dataframe):
