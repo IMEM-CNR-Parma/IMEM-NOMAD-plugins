@@ -41,14 +41,14 @@ from nomad.datamodel.metainfo.basesections import (
     ExperimentStep,
 )
 
-from nomad_material_processing import Dopant, SubstrateReference
-from nomad_material_processing.vapor_deposition import (
+from nomad_material_processing.general import Dopant, SubstrateReference
+from nomad_material_processing.vapor_deposition.general import (
     MolarFlowRate,
     Temperature,
     Pressure,
     VolumetricFlowRate,
 )
-from nomad_material_processing.vapor_deposition.cvd import (
+from nomad_material_processing.vapor_deposition.cvd.general import (
     PartialVaporPressure,
     BubblerEvaporator,
 )
@@ -57,7 +57,7 @@ from nomad.datamodel.datamodel import EntryArchive, EntryMetadata
 
 
 def get_reference(upload_id, entry_id):
-    return f"../uploads/{upload_id}/archive/{entry_id}"
+    return f'../uploads/{upload_id}/archive/{entry_id}'
 
 
 def get_entry_id(upload_id, filename):
@@ -67,7 +67,7 @@ def get_entry_id(upload_id, filename):
 
 
 def get_hash_ref(upload_id, filename):
-    return f"{get_reference(upload_id, get_entry_id(upload_id, filename))}#data"
+    return f'{get_reference(upload_id, get_entry_id(upload_id, filename))}#data'
 
 
 def nan_equal(a, b):
@@ -119,21 +119,21 @@ def create_archive(
     if isinstance(context, ClientContext):
         return None
     if file_exists:
-        with context.raw_file(filename, "r") as file:
+        with context.raw_file(filename, 'r') as file:
             existing_dict = yaml.safe_load(file)
             dicts_are_equal = dict_nan_equal(existing_dict, entry_dict)
     if not file_exists or overwrite or dicts_are_equal:
-        with context.raw_file(filename, "w") as newfile:
-            if file_type == "json":
+        with context.raw_file(filename, 'w') as newfile:
+            if file_type == 'json':
                 json.dump(entry_dict, newfile)
-            elif file_type == "yaml":
+            elif file_type == 'yaml':
                 yaml.dump(entry_dict, newfile)
         context.upload.process_updated_raw_file(filename, allow_modify=True)
     elif file_exists and not overwrite and not dicts_are_equal:
         logger.error(
-            f"{filename} archive file already exists. "
-            f"You are trying to overwrite it with a different content. "
-            f"To do so, remove the existing archive and click reprocess again."
+            f'{filename} archive file already exists. '
+            f'You are trying to overwrite it with a different content. '
+            f'To do so, remove the existing archive and click reprocess again.'
         )
     return get_hash_ref(context.upload_id, filename)
 
@@ -177,12 +177,12 @@ def import_excel_sheet(
     Returns:
     - pd.DataFrame: A pandas DataFrame containing the cleaned data from the specified Excel sheet.
     """
-    sheet = pd.read_excel(xlsx, sheet_name, comment="#", converters=converters)
+    sheet = pd.read_excel(xlsx, sheet_name, comment='#', converters=converters)
     sheet.columns = sheet.columns.str.strip()
     sheet = sheet.applymap(lambda x: x.strip() if isinstance(x, str) else x)
-    sheet.replace("", pd.NA, inplace=True)
-    sheet.dropna(how="all", inplace=True)
-    columns_to_remove = [col for col in sheet.columns if re.match(r"^\.\d+$", col)]
+    sheet.replace('', pd.NA, inplace=True)
+    sheet.dropna(how='all', inplace=True)
+    columns_to_remove = [col for col in sheet.columns if re.match(r'^\.\d+$', col)]
     sheet.drop(columns=columns_to_remove, inplace=True)
     return sheet
 
@@ -190,18 +190,18 @@ def import_excel_sheet(
 def is_activity_section(section):
     if section is None or section.m_def is None:
         return False
-    return any("Activity" in i.label for i in section.m_def.all_base_sections)
+    return any('Activity' in i.label for i in section.m_def.all_base_sections)
 
 
 def handle_section(section):
-    if hasattr(section, "reference") and is_activity_section(section.reference):
+    if hasattr(section, 'reference') and is_activity_section(section.reference):
         return [ExperimentStep(activity=section.reference, name=section.reference.name)]
-    if section.m_def.label == "CharacterizationMovpeIMEM":
+    if section.m_def.label == 'CharacterizationMovpeIMEM':
         sub_sect_list = []
         for sub_section in vars(section).values():
             if isinstance(sub_section, list):
                 for item in sub_section:
-                    if hasattr(item, "reference") and is_activity_section(
+                    if hasattr(item, 'reference') and is_activity_section(
                         item.reference
                     ):
                         sub_sect_list.append(
@@ -210,7 +210,7 @@ def handle_section(section):
                             )
                         )
         return sub_sect_list
-    if not hasattr(section, "reference") and is_activity_section(section):
+    if not hasattr(section, 'reference') and is_activity_section(section):
         return [ExperimentStep(activity=section, name=section.name)]
 
 
@@ -237,7 +237,7 @@ def fill_quantity(dataframe, column_header, read_unit=None, array=False):
     pint_value = None
     if read_unit is not None:
         try:
-            if value != "" and value is not None:
+            if value != '' and value is not None:
                 if not array:
                     pint_value = ureg.Quantity(
                         value,
@@ -252,12 +252,12 @@ def fill_quantity(dataframe, column_header, read_unit=None, array=False):
             else:
                 value = None
         except ValueError:
-            if hasattr(value, "empty") and not value.empty():
+            if hasattr(value, 'empty') and not value.empty():
                 pint_value = ureg.Quantity(
                     value,
                     ureg(read_unit),
                 )
-            elif value == "":
+            elif value == '':
                 pint_value = None
 
     return pint_value if read_unit is not None else value
@@ -270,7 +270,7 @@ def clean_col_names(growth_run_dataframe):
     growth_run_dataframe.columns = growth_run_dataframe.columns.str.strip()
     string = []
     for col_name in growth_run_dataframe.columns:
-        pre, sep, post = col_name.rpartition(".")
+        pre, sep, post = col_name.rpartition('.')
         if sep:
             string.append(pre)
         else:
@@ -301,7 +301,7 @@ def rename_block_cols(string, block_cols, initial_col):
 
     new_columns = []
     for index, chunk in enumerate(split_list):
-        bubbler = [f"{i}.{index}" for i in chunk if i in block_cols]
+        bubbler = [f'{i}.{index}' for i in chunk if i in block_cols]
         other_cols = [i for i in chunk if i not in block_cols]
         if bubbler:
             new_columns.extend(bubbler)
@@ -319,26 +319,26 @@ def fetch_substrate(archive, sample_id, substrate_id, logger):
 
     substrate_reference_str = None
     search_result = search(
-        owner="all",
+        owner='all',
         query={
-            "results.eln.sections:any": ["SubstrateMovpe", "Substrate"],
-            "results.eln.lab_ids:any": [substrate_id],
+            'results.eln.sections:any': ['SubstrateMovpe', 'Substrate'],
+            'results.eln.lab_ids:any': [substrate_id],
         },
         user_id=archive.metadata.main_author.user_id,
     )
     if not search_result.data:
         logger.warn(
-            f"Substrate entry [{substrate_id}] was not found, upload and reprocess to reference it in ThinFilmStack entry [{sample_id}]"
+            f'Substrate entry [{substrate_id}] was not found, upload and reprocess to reference it in ThinFilmStack entry [{sample_id}]'
         )
         return None
     if len(search_result.data) > 1:
         logger.warn(
-            f"Found {search_result.pagination.total} entries with lab_id: "
+            f'Found {search_result.pagination.total} entries with lab_id: '
             f'"{substrate_id}". Will use the first one found.'
         )
         return None
     if len(search_result.data) >= 1:
-        upload_id = search_result.data[0]["upload_id"]
+        upload_id = search_result.data[0]['upload_id']
         from nomad.files import UploadFiles
         from nomad.app.v1.routers.uploads import get_upload_with_read_access
 
