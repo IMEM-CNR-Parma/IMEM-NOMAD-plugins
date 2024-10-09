@@ -83,7 +83,7 @@ from nomad_measurements.general import (
     ActivityReference,
 )
 
-from nomad_measurements.xrd import ELNXRayDiffraction
+from nomad_measurements.xrd.schema import ELNXRayDiffraction
 
 from nomad.config import config
 
