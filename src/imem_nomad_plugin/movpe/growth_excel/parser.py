@@ -50,6 +50,8 @@ from nomad_material_processing.general import (
     Parallelepiped,
     SubstrateCrystalProperties,
     Miscut,
+    CartesianMiscut,
+    ProjectedMiscutOrientation,
     Dopant,
 )
 from nomad_material_processing.vapor_deposition.general import (
@@ -581,7 +583,11 @@ class ParserMovpeIMEM(MatchingParser):
             substrate_data = SubstrateMovpe()
             substrate_data.geometry = Shape()
             substrate_data.crystal_properties = SubstrateCrystalPropertiesMovpe()
-            substrate_data.crystal_properties.miscut = [MiscutMovpe()]
+            substrate_data.crystal_properties.miscut = MiscutMovpe()
+            substrate_data.crystal_properties.miscut.cartesian_miscut = (
+                CartesianMiscut()
+            )
+            substrate_data.crystal_properties.miscut.cartesian_miscut.reference_orientation = ProjectedMiscutOrientation()
 
             substrate_data.lab_id = substrate_id
             substrate_data.name = fill_quantity(substrate_row, 'Material')
@@ -640,11 +646,11 @@ class ParserMovpeIMEM(MatchingParser):
 
             miscut_angle = fill_quantity(substrate_row, 'Off-cut')
             if miscut_angle:
-                substrate_data.crystal_properties.miscut[0].angle = miscut_angle
+                substrate_data.crystal_properties.miscut.cartesian_miscut.reference_orientation.angle = miscut_angle
 
             mo = fill_quantity(substrate_row, 'Off-cut Orientation')
             if mo:
-                substrate_data.crystal_properties.miscut[0].orientation = mo
+                substrate_data.crystal_properties.miscut.cartesian_miscut.reference_orientation.hkl_reciprocal = mo
 
             substrate_data.elemental_composition = populate_elements(substrate_row)
 
