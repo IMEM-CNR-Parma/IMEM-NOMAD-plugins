@@ -30,12 +30,13 @@ movpe_growth_excel_parser = MovpeParserEntryPoint(
     name='MovpeParser',
     description='Parser defined using the new plugin mechanism.',
     mainfile_name_re=r'.+\.xlsx',
-    mainfile_mime_re='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    mainfile_mime_re=r'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     mainfile_contents_dict={
         'Overview': {'__has_all_keys': ['Sample', 'Substrate T', 'VI III Ratio']},
         'Substrate': {'__has_all_keys': ['Substrates', 'Orientation']},
         'GrowthRun': {
             '__has_all_keys': ['Name', 'Flow Metal Carrier', 'Flow Oxydant Carrier']
         },
+        '__comment_symbol': '#',
     },
 )
