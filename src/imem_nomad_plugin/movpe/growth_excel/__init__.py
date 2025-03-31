@@ -37,6 +37,6 @@ movpe_growth_excel_parser = MovpeParserEntryPoint(
         'GrowthRun': {
             '__has_all_keys': ['Name', 'Flow Metal Carrier', 'Flow Oxydant Carrier']
         },
-        '__comment_symbol': '#',
+        '__has_comment': '#',
     },
 )

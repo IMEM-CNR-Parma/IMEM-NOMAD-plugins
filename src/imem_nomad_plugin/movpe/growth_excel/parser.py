@@ -53,6 +53,8 @@ from nomad_material_processing.general import (
     CartesianMiscut,
     ProjectedMiscutOrientation,
     Dopant,
+    MillerIndices,
+    CrystallographicDirection,
 )
 from nomad_material_processing.vapor_deposition.general import (
     Pressure,
@@ -98,8 +100,6 @@ from imem_nomad_plugin.movpe.schema import (
     ThinFilmStackMovpeReference,
     ChamberEnvironmentMovpe,
     SubstrateMovpe,
-    SubstrateCrystalPropertiesMovpe,
-    MiscutMovpe,
     Shape,
     PureSubstanceIMEM,
     PrecursorReference,
@@ -582,12 +582,15 @@ class ParserMovpeIMEM(MatchingParser):
             )
             substrate_data = SubstrateMovpe()
             substrate_data.geometry = Shape()
-            substrate_data.crystal_properties = SubstrateCrystalPropertiesMovpe()
-            substrate_data.crystal_properties.miscut = MiscutMovpe()
+            substrate_data.crystal_properties = SubstrateCrystalProperties()
+            substrate_data.crystal_properties.surface_orientation = CrystallographicDirection()
+            substrate_data.crystal_properties.surface_orientation.hkl_reciprocal = MillerIndices()
+            substrate_data.crystal_properties.miscut = Miscut()
             substrate_data.crystal_properties.miscut.cartesian_miscut = (
                 CartesianMiscut()
             )
             substrate_data.crystal_properties.miscut.cartesian_miscut.reference_orientation = ProjectedMiscutOrientation()
+            substrate_data.crystal_properties.miscut.cartesian_miscut.reference_orientation.hkl_reciprocal = MillerIndices()
 
             substrate_data.lab_id = substrate_id
             substrate_data.name = fill_quantity(substrate_row, 'Material')
@@ -642,7 +645,9 @@ class ParserMovpeIMEM(MatchingParser):
 
             orientation = fill_quantity(substrate_row, 'Orientation')
             if orientation:
-                substrate_data.crystal_properties.orientation = orientation
+                substrate_data.crystal_properties.surface_orientation.hkl_reciprocal.h_index = int(orientation[0])
+                substrate_data.crystal_properties.surface_orientation.hkl_reciprocal.k_index = int(orientation[1])
+                substrate_data.crystal_properties.surface_orientation.hkl_reciprocal.l_index = int(orientation[2])
 
             miscut_angle = fill_quantity(substrate_row, 'Off-cut')
             if miscut_angle:
@@ -650,7 +655,9 @@ class ParserMovpeIMEM(MatchingParser):
 
             mo = fill_quantity(substrate_row, 'Off-cut Orientation')
             if mo:
-                substrate_data.crystal_properties.miscut.cartesian_miscut.reference_orientation.hkl_reciprocal = mo
+                substrate_data.crystal_properties.miscut.cartesian_miscut.reference_orientation.hkl_reciprocal.h_index = int(mo[0])
+                substrate_data.crystal_properties.miscut.cartesian_miscut.reference_orientation.hkl_reciprocal.k_index = int(mo[1])
+                substrate_data.crystal_properties.miscut.cartesian_miscut.reference_orientation.hkl_reciprocal.l_index = int(mo[2])
 
             substrate_data.elemental_composition = populate_elements(substrate_row)
 
