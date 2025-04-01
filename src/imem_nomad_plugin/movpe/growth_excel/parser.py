@@ -35,9 +35,9 @@ from nomad.datamodel.metainfo.basesections import (
     SystemComponent,
     CompositeSystemReference,
     EntityReference,
-    PubChemPureSubstanceSection,
     ElementalComposition,
     PureSubstanceComponent,
+    PureSubstanceSection,
     PureSubstance,
     PureSubstanceSection,
     ExperimentStep,
@@ -375,7 +375,7 @@ def populate_mist_source(
                     mist_obj.material.append(
                         ComponentConcentration(
                             substance_name=material,
-                            pure_substance=PubChemPureSubstanceSection(
+                            pure_substance=PureSubstanceSection(
                                 name=material,
                             ),
                             theoretical_concentration=conc,
@@ -897,7 +897,7 @@ class ParserMovpeIMEM(MatchingParser):
             if growth_step_environment_gas_flow_gas_name:
                 growth_step.environment.gas_flow.append(
                     PushPurgeGasFlow(
-                        gas=PubChemPureSubstanceSection(
+                        gas=PureSubstanceSection(
                             name=growth_step_environment_gas_flow_gas_name,
                         ),
                     )
@@ -1044,7 +1044,7 @@ class ParserMovpeIMEM(MatchingParser):
             if pregrowth_step_environment_gas_flow_gas_name:
                 pregrowth_step.environment.gas_flow.append(
                     PushPurgeGasFlow(
-                        gas=PubChemPureSubstanceSection(
+                        gas=PureSubstanceSection(
                             name=pregrowth_step_environment_gas_flow_gas_name,
                         ),
                     )
@@ -1435,7 +1435,7 @@ class ParserMovpeIMEM(MatchingParser):
         precursors = []
         for _, row in precursors_sheet.iterrows():
             precursor = PureSubstanceIMEM()
-            precursor.pure_substance = PubChemPureSubstanceSection()
+            precursor.pure_substance = PureSubstanceSection()
 
             cas = fill_quantity(row, 'CAS')
             if cas:

@@ -1384,55 +1384,103 @@ class ExperimentMovpeIMEM(Experiment, EntryData):
     # )
 
     def normalize(self, archive, logger):
-        from nomad.datamodel import EntryArchive
-
-        self.workflow2 = Workflow()
-        self.workflow2.tasks = []
+        # archive.workflow2 = Workflow(name=self.name)
+        # archive.workflow2.tasks = []
+        # if self.pregrowth is not None:
+        #     archive.workflow2.tasks.append(
+        #         Task(
+        #             name=f'{self.pregrowth.name}',
+        #             section=self.pregrowth.reference,
+        #         )
+        #     )
+        # if self.sample_cut is not None:
+        #     archive.workflow2.tasks.append(
+        #         Task(
+        #             name=f'{self.sample_cut.name}',
+        #             section=self.sample_cut.reference,
+        #         )
+        #     )
+        # if self.precursors_preparation is not None:
+        #     archive.workflow2.tasks.append(
+        #         Task(
+        #             name=f'{self.precursors_preparation.name}',
+        #             section=self.precursors_preparation.reference,
+        #         )
+        #     )
+        # if self.growth_run is not None:
+        #     archive.workflow2.tasks.append(
+        #         Task(
+        #             name=f'{self.growth_run.name}',
+        #             section=self.growth_run.reference,
+        #         )
+        #     )
+        # if self.contact_sputtering is not None:
+        #     for contact in self.contact_sputtering:
+        #         archive.workflow2.tasks.append(
+        #             Task(
+        #                 name=f'{contact.name}',
+        #                 section=contact.reference,
+        #             )
+        #         )
+        # for i in self.characterization:
+        #     charact = getattr(self.characterization, i)
+        #     if len(charact) > 0:
+        #         for j in charact:
+        #             archive.workflow2.tasks.append(
+        #                 Task(
+        #                     name=f'{j.name}',
+        #                     section=j.reference,
+        #                 )
+        #             )        
+        archive.data.steps = []
         if self.pregrowth is not None:
-            self.workflow2.tasks.append(
-                Task(
+            archive.data.steps.append(
+                ExperimentStep(
                     name=f'{self.pregrowth.name}',
-                    section=self.pregrowth.reference,
+                    activity=self.pregrowth.reference,
                 )
             )
         if self.sample_cut is not None:
-            self.workflow2.tasks.append(
-                Task(
+            archive.data.steps.append(
+                ExperimentStep(
                     name=f'{self.sample_cut.name}',
-                    section=self.sample_cut.reference,
+                    activity=self.sample_cut.reference,
                 )
             )
         if self.precursors_preparation is not None:
-            self.workflow2.tasks.append(
-                Task(
+            archive.data.steps.append(
+                ExperimentStep(
                     name=f'{self.precursors_preparation.name}',
-                    section=self.precursors_preparation.reference,
+                    activity=self.precursors_preparation.reference,
                 )
             )
         if self.growth_run is not None:
-            self.workflow2.tasks.append(
-                Task(
+            archive.data.steps.append(
+                ExperimentStep(
                     name=f'{self.growth_run.name}',
-                    section=self.growth_run.reference,
+                    activity=self.growth_run.reference,
                 )
             )
         if self.contact_sputtering is not None:
             for contact in self.contact_sputtering:
-                self.workflow2.tasks.append(
-                    Task(
+                archive.data.steps.append(
+                    ExperimentStep(
                         name=f'{contact.name}',
-                        section=contact.reference,
+                        activity=contact.reference,
                     )
                 )
-        for charact in self.characterization:
-            for activity in charact:
-                if activity.reference is not None:
-                    self.workflow2.tasks.append(
-                        Task(
-                            name=f'{activity.reference.name}',
-                            section=activity.reference,
+        for i in self.characterization:
+            charact = getattr(self.characterization, i)
+            if len(charact) > 0:
+                for j in charact:
+                    archive.data.steps.append(
+                        ExperimentStep(
+                            name=f'{j.name}',
+                            activity=j.reference,
                         )
                     )
+        
+        super().normalize(archive, logger)
 
         # search_result = search(
         #     owner="user",
