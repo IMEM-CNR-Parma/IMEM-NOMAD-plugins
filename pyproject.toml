@@ -35,8 +35,6 @@ dependencies = [
     'nomad-material-processing',
     'nomad-measurements',
     'nomad-analysis',
-    "nomad-simulations>=0.1.2",
-    "nomad-schema-plugin-simulation-workflow>=1.0.1",
 ]
 [project.urls]
 "Homepage" = "https://github.com/IMEM-CNR-Parma/IMEM-NOMAD-plugins"
