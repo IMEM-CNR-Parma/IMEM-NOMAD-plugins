@@ -73,6 +73,7 @@ from nomad_material_processing.vapor_deposition.general import (
     Pressure,
     Temperature,
     VolumetricFlowRate,
+    GasFlow,
 )
 
 from nomad_material_processing.vapor_deposition.cvd.general import (
@@ -924,8 +925,8 @@ class LayTecTemperature(Temperature):
 
 
 class ChamberEnvironmentMovpe(ChamberEnvironment):
-    uniform_gas_flow_rate = SubSection(
-        section_def=VolumetricFlowRate,
+    uniform_gas = SubSection(
+        section_def=GasFlow,
     )
     pressure = SubSection(
         section_def=PressureIMEM,

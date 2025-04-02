@@ -59,6 +59,7 @@ from nomad_material_processing.general import (
 from nomad_material_processing.vapor_deposition.general import (
     Pressure,
     VolumetricFlowRate,
+    GasFlow,
     Temperature,
 )
 
@@ -856,7 +857,8 @@ class ParserMovpeIMEM(MatchingParser):
             growth_step.environment.pressure = PressureIMEM()
             growth_step.environment.rotation = Rotation()
             growth_step.environment.gas_flow = []
-            growth_step.environment.uniform_gas_flow_rate = VolumetricFlowRate()
+            growth_step.environment.uniform_gas = GasFlow()
+            growth_step.environment.uniform_gas.flow_rate = VolumetricFlowRate()
             growth_step.sample_parameters = [SampleParametersMovpe()]
             growth_step.sample_parameters[
                 0
@@ -891,24 +893,19 @@ class ParserMovpeIMEM(MatchingParser):
                     growth_step_environment_rotation_set_value
                 )
 
-            growth_step_environment_gas_flow_gas_name = fill_quantity(
+            growth_step_uniform_gas_flow_gas_name = fill_quantity(
                 step, 'Carrier Gas'
             )
-            if growth_step_environment_gas_flow_gas_name:
-                growth_step.environment.gas_flow.append(
-                    PushPurgeGasFlow(
-                        gas=PureSubstanceSection(
-                            name=growth_step_environment_gas_flow_gas_name,
-                        ),
-                    )
-                )
-
+            if growth_step_uniform_gas_flow_gas_name:
+                growth_step.environment.uniform_gas.gas=PureSubstanceSection(
+                            name=growth_step_uniform_gas_flow_gas_name,
+                        )
             growth_step_environment_uniform_gas_flow_rate_set_value = fill_quantity(
                 step, 'Uniform Valve', read_unit='cm ** 3 / minute', array=True
             )
             if growth_step_environment_uniform_gas_flow_rate_set_value:
-                growth_step.environment.uniform_gas_flow_rate.set_time = [0]
-                growth_step.environment.uniform_gas_flow_rate.set_value = (
+                growth_step.environment.uniform_gas.flow_rate.set_time = [0]
+                growth_step.environment.uniform_gas.flow_rate.set_value = (
                     growth_step_environment_uniform_gas_flow_rate_set_value
                 )
 
@@ -1001,7 +998,8 @@ class ParserMovpeIMEM(MatchingParser):
             pregrowth_step.environment.pressure = PressureIMEM()
             pregrowth_step.environment.rotation = Rotation()
             pregrowth_step.environment.gas_flow = []
-            pregrowth_step.environment.uniform_gas_flow_rate = VolumetricFlowRate()
+            pregrowth_step.environment.uniform_gas = GasFlow()
+            pregrowth_step.environment.uniform_gas.flow_rate = VolumetricFlowRate()
             pregrowth_step.sample_parameters = [SampleParametersMovpe()]
             pregrowth_step.sample_parameters[
                 0
@@ -1038,25 +1036,20 @@ class ParserMovpeIMEM(MatchingParser):
                     pregrowth_step_environment_rotation_set_value
                 )
 
-            pregrowth_step_environment_gas_flow_gas_name = fill_quantity(
+            pregrowth_step_uniform_gas_flow_gas_name = fill_quantity(
                 step, 'Carrier Gas'
             )
-            if pregrowth_step_environment_gas_flow_gas_name:
-                pregrowth_step.environment.gas_flow.append(
-                    PushPurgeGasFlow(
-                        gas=PureSubstanceSection(
-                            name=pregrowth_step_environment_gas_flow_gas_name,
-                        ),
-                    )
-                )
-
-            pregrowth_step_environment_uniform_gas_flow_rate_set_value = fill_quantity(
+            if pregrowth_step_uniform_gas_flow_gas_name:
+                pregrowth_step.environment.uniform_gas.gas=PureSubstanceSection(
+                            name=pregrowth_step_uniform_gas_flow_gas_name,
+                        )
+            pregrowth_step_uniform_gas_flow_rate_set_value = fill_quantity(
                 step, 'Carrier Gas Flow', read_unit='cm ** 3 / minute', array=True
             )
-            if pregrowth_step_environment_uniform_gas_flow_rate_set_value:
-                pregrowth_step.environment.uniform_gas_flow_rate.set_time = [0]
-                pregrowth_step.environment.uniform_gas_flow_rate.set_value = (
-                    pregrowth_step_environment_uniform_gas_flow_rate_set_value
+            if pregrowth_step_uniform_gas_flow_rate_set_value:
+                pregrowth_step.environment.uniform_gas.flow_rate.set_time = [0]
+                pregrowth_step.environment.uniform_gas.flow_rate.set_value = (
+                    pregrowth_step_uniform_gas_flow_rate_set_value
                 )
 
             pregrowth_step_sample_parameters_filament_temperature_set_value = (
