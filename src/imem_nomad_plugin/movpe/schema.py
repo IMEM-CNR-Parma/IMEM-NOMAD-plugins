@@ -89,8 +89,6 @@ from nomad_measurements.xrd.schema import ELNXRayDiffraction
 
 from nomad.config import config
 
-from lakeshore_nomad_plugin.hall.schema import HallMeasurement
-
 from imem_nomad_plugin.utils import (
     create_archive,
     handle_section,
@@ -433,7 +431,6 @@ class InSituMonitoringReference(SectionReference):
 class HallMeasurementReference(SectionReference):
     """
     A section used for referencing a HallMeasurement.
-    The class is taken from the dedicated Lakeshore plugin
     """
 
     reference = Quantity(
@@ -898,32 +895,6 @@ class PressureIMEM(Pressure):
     )
 
 
-class LayTecTemperature(Temperature):
-    """
-    Central shaft temperature (to hold the susceptor)
-    """
-
-    value = Quantity(
-        type=float,
-        unit='kelvin',
-        a_eln=ELNAnnotation(
-            defaultDisplayUnit='celsius',
-        ),
-        shape=['*'],
-    )
-    set_value = Quantity(
-        type=float,
-        description='The set value(s) (i.e. the intended values) set.',
-        shape=['*'],
-        unit='kelvin',
-        a_eln=ELNAnnotation(
-            component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='celsius',
-            label='Set value',
-        ),
-    )
-
-
 class ChamberEnvironmentMovpe(ChamberEnvironment):
     uniform_gas = SubSection(
         section_def=GasFlow,
@@ -949,7 +920,6 @@ class SampleParametersMovpe(SampleParameters):
                 order=[
                     'shaft_temperature',
                     'filament_temperature',
-                    'laytec_temperature',
                     'substrate_temperature',
                     'growth_rate',
                     'layer',
