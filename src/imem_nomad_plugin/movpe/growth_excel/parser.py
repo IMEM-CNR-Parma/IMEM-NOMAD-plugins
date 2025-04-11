@@ -971,25 +971,6 @@ class ParserMovpeIMEM(MatchingParser):
 
         growth_process_object.steps = process_steps_lists
 
-        # creating growth process archives
-        growth_process_filename = (
-            f'{sample_id}-growth.GrowthMovpeIMEM.archive.{filetype}'
-        )
-        # Activity.normalize(growth_process_object, archive, logger)
-        growth_process_archive = EntryArchive(
-            data=growth_process_object if growth_process_object else GrowthMovpeIMEM(),
-            m_context=archive.m_context,
-            metadata=EntryMetadata(upload_id=archive.m_context.upload_id),
-        )
-
-        create_archive(
-            growth_process_archive.m_to_dict(),
-            archive.m_context,
-            growth_process_filename,
-            filetype,
-            logger,
-        )
-
         # creating growth PRE-process step objects
         pre_process_steps_lists = []
         for step_id, step in pregrowth_sheet.iterrows():
@@ -1087,27 +1068,6 @@ class ParserMovpeIMEM(MatchingParser):
 
         pregrowth_process_object.lab_id = sample_id
         pregrowth_process_object.steps = pre_process_steps_lists
-
-        # creating pregrowth process archives
-        pregrowth_process_filename = (
-            f'{sample_id}-pregrowth.GrowthMovpeIMEM.archive.{filetype}'
-        )
-        # Activity.normalize(pregrowth_process_object, archive, logger)
-        pregrowth_process_archive = EntryArchive(
-            data=pregrowth_process_object
-            if pregrowth_process_object
-            else GrowthMovpeIMEM(),
-            m_context=archive.m_context,
-            metadata=EntryMetadata(upload_id=archive.m_context.upload_id),
-        )
-
-        create_archive(
-            pregrowth_process_archive.m_to_dict(),
-            archive.m_context,
-            pregrowth_process_filename,
-            filetype,
-            logger,
-        )
 
         # creating AFM archive
         afm_measurements = []
@@ -1474,7 +1434,6 @@ class ParserMovpeIMEM(MatchingParser):
 
         # EXPERIMENT
         # creating experiment archive
-        experiment_filename = f'{sample_id}.ExperimentMovpeIMEM.archive.{filetype}'
         experiment_data = ExperimentMovpeIMEM(
             name=f'experiment {sample_id}',
             method='MOVPE 2 experiment',
@@ -1497,6 +1456,48 @@ class ParserMovpeIMEM(MatchingParser):
             ),
             precursors=precursors,
         )
+
+        # add precursors to growth and pregrowth
+        growth_process_object.precursors = precursors
+        pregrowth_process_object.precursors = precursors
+
+        # creating archives
+        
+        growth_process_filename = (
+            f'{sample_id}-growth.GrowthMovpeIMEM.archive.{filetype}'
+        )
+        # Activity.normalize(growth_process_object, archive, logger)
+        growth_process_archive = EntryArchive(
+            data=growth_process_object if growth_process_object else GrowthMovpeIMEM(),
+            m_context=archive.m_context,
+            metadata=EntryMetadata(upload_id=archive.m_context.upload_id),
+        )
+        create_archive(
+            growth_process_archive.m_to_dict(),
+            archive.m_context,
+            growth_process_filename,
+            filetype,
+            logger,
+        )        # creating pregrowth process archives
+        pregrowth_process_filename = (
+            f'{sample_id}-pregrowth.GrowthMovpeIMEM.archive.{filetype}'
+        )
+        # Activity.normalize(pregrowth_process_object, archive, logger)
+        pregrowth_process_archive = EntryArchive(
+            data=pregrowth_process_object
+            if pregrowth_process_object
+            else GrowthMovpeIMEM(),
+            m_context=archive.m_context,
+            metadata=EntryMetadata(upload_id=archive.m_context.upload_id),
+        )
+        create_archive(
+            pregrowth_process_archive.m_to_dict(),
+            archive.m_context,
+            pregrowth_process_filename,
+            filetype,
+            logger,
+        )
+        experiment_filename = f'{sample_id}.ExperimentMovpeIMEM.archive.{filetype}'
         experiment_archive = EntryArchive(
             data=experiment_data if experiment_data else ExperimentMovpeIMEM(),
             # m_context=archive.m_context,

@@ -999,6 +999,21 @@ class SampleParametersMovpe(SampleParameters):
     )
 
 
+class PrecursorReference(EntityReference):
+    """
+    A section used for referencing a Chemical.
+    """
+
+    m_def = Section()
+    reference = Quantity(
+        type=PureSubstance,
+        description='A reference to a NOMAD `PureSubstance` entry.',
+        a_eln=ELNAnnotation(
+            component='ReferenceEditQuantity',
+        ),
+    )
+
+
 class GrowthStepMovpeIMEM(VaporDepositionStep, PlotSection):
     """
     Growth step for MOVPE IMEM
@@ -1158,6 +1173,10 @@ class GrowthMovpeIMEM(VaporDeposition, EntryData):
             component='StringEditQuantity',
         ),
     )
+    precursors = SubSection(
+        section_def=PrecursorReference,
+        repeats=True,
+    )
     steps = SubSection(
         section_def=GrowthStepMovpeIMEM,
         repeats=True,
@@ -1227,21 +1246,6 @@ class SampleCutIMEMReference(ActivityReference):
     reference = Quantity(
         type=SampleCutIMEM,
         description='A reference to a NOMAD `SampleCutIMEM` entry.',
-        a_eln=ELNAnnotation(
-            component='ReferenceEditQuantity',
-        ),
-    )
-
-
-class PrecursorReference(EntityReference):
-    """
-    A section used for referencing a Chemical.
-    """
-
-    m_def = Section()
-    reference = Quantity(
-        type=PureSubstance,
-        description='A reference to a NOMAD `PureSubstance` entry.',
         a_eln=ELNAnnotation(
             component='ReferenceEditQuantity',
         ),
