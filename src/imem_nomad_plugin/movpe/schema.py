@@ -123,13 +123,19 @@ class Shape(Parallelepiped):
         description='The diamater',
         a_eln=ELNAnnotation(
             component=ELNComponentEnum.NumberEditQuantity,
-            defaultDisplayUnit='millimeter',
+            defaultDisplayUnit='inches',
         ),
-        unit='meter',
+        unit='inches',
     )
 
 
 class PureSubstanceIMEM(PureSubstance, EntryData):
+    buying_date = Quantity(
+        type=Datetime,
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.DateEditQuantity,
+        ),
+    )
     opening_date = Quantity(
         type=Datetime,
         a_eln=ELNAnnotation(
@@ -158,7 +164,13 @@ class PureSubstanceIMEM(PureSubstance, EntryData):
             component=ELNComponentEnum.StringEditQuantity,
         ),
     )
-
+    purity = Quantity(
+        type=str,
+        description='Purity of the Chemical. [Wikipedia](https://en.wikipedia.org/wiki/Chemical_purity)',
+        a_eln=ELNAnnotation(
+            component=ELNComponentEnum.StringEditQuantity,
+        ),
+    )
 
 class SubstrateMovpe(CrystallineSubstrate, EntryData):
     """
@@ -1279,10 +1291,6 @@ class ExperimentMovpeIMEM(Experiment, EntryData):
         categories=[IMEMMOVPECategory],
         label='MOVPE Experiment',
     )
-    # lab_id
-    method = Quantity(
-        type=str,
-    )
     data_file = Quantity(
         type=str,
         description='Upload here the spreadsheet file containing the growth data',
@@ -1313,13 +1321,6 @@ class ExperimentMovpeIMEM(Experiment, EntryData):
         ),
         unit='kelvin',
     )
-    oxygen_argon_ratio = Quantity(
-        type=str,
-        description='FILL THE DESCRIPTION',
-        a_eln=ELNAnnotation(
-            component='StringEditQuantity',
-        ),
-    )
     composition = Quantity(
         type=str,
         description='FILL THE DESCRIPTION',
@@ -1332,6 +1333,10 @@ class ExperimentMovpeIMEM(Experiment, EntryData):
     )
     precursors = SubSection(
         section_def=PrecursorReference,
+        repeats=True,
+    )
+    substrates = SubSection(
+        section_def=SubstrateMovpeReference,
         repeats=True,
     )
 

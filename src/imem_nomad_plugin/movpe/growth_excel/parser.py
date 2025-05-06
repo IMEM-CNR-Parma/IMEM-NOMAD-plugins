@@ -1431,37 +1431,6 @@ class ParserMovpeIMEM(MatchingParser):
                     reference=f'../uploads/{archive.m_context.upload_id}/archive/{hash(archive.m_context.upload_id, precursor_filename)}#data',
                 )
             )
-
-        # EXPERIMENT
-        # creating experiment archive
-        experiment_data = ExperimentMovpeIMEM(
-            name=f'experiment {sample_id}',
-            method='MOVPE 2 experiment',
-            pregrowth=GrowthMovpeIMEMReference(
-                reference=f'../uploads/{archive.m_context.upload_id}/archive/{hash(archive.m_context.upload_id, pregrowth_process_filename)}#data',
-            ),
-            growth_run=GrowthMovpeIMEMReference(
-                reference=f'../uploads/{archive.m_context.upload_id}/archive/{hash(archive.m_context.upload_id, growth_process_filename)}#data',
-            ),
-            sample_cut=SampleCutIMEMReference(
-                reference=f'../uploads/{archive.m_context.upload_id}/archive/{hash(archive.m_context.upload_id, samplecut_filename)}#data',
-            ),
-            contact_sputtering=sputterings,
-            characterization=CharacterizationMovpeIMEM(
-                xrd=xrd_measurements,
-                afm=afm_measurements,
-                hall=hall_measurements,
-                reflectance=reflec_measurements,
-                sem=sem_measurements,
-            ),
-            precursors=precursors,
-        )
-
-        # add precursors to growth and pregrowth
-        growth_process_object.precursors = precursors
-        pregrowth_process_object.precursors = precursors
-
-        # creating archives
         
         growth_process_filename = (
             f'{sample_id}-growth.GrowthMovpeIMEM.archive.{filetype}'
@@ -1497,6 +1466,44 @@ class ParserMovpeIMEM(MatchingParser):
             filetype,
             logger,
         )
+
+        # EXPERIMENT
+        # creating experiment archive
+        sub_ref = None
+        if substrate_ref is not None:
+            sub_ref = SubstrateReference(reference=substrate_ref)
+        else:
+            sub_ref = SubstrateReference(name=substrate_id, lab_id=substrate_id)
+
+        experiment_data = ExperimentMovpeIMEM(
+            name=f'experiment {sample_id}',
+            pregrowth=GrowthMovpeIMEMReference(
+                reference=f'../uploads/{archive.m_context.upload_id}/archive/{hash(archive.m_context.upload_id, pregrowth_process_filename)}#data',
+            ),
+            growth_run=GrowthMovpeIMEMReference(
+                reference=f'../uploads/{archive.m_context.upload_id}/archive/{hash(archive.m_context.upload_id, growth_process_filename)}#data',
+            ),
+            substrates=[sub_ref],
+            sample_cut=SampleCutIMEMReference(
+                reference=f'../uploads/{archive.m_context.upload_id}/archive/{hash(archive.m_context.upload_id, samplecut_filename)}#data',
+            ),
+            contact_sputtering=sputterings,
+            characterization=CharacterizationMovpeIMEM(
+                xrd=xrd_measurements,
+                afm=afm_measurements,
+                hall=hall_measurements,
+                reflectance=reflec_measurements,
+                sem=sem_measurements,
+            ),
+            precursors=precursors,
+        )
+
+        # add precursors to growth and pregrowth
+        growth_process_object.precursors = precursors
+        pregrowth_process_object.precursors = precursors
+
+        # creating experiment archive
+
         experiment_filename = f'{sample_id}.ExperimentMovpeIMEM.archive.{filetype}'
         experiment_archive = EntryArchive(
             data=experiment_data if experiment_data else ExperimentMovpeIMEM(),
